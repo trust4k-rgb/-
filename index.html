@@ -499,6 +499,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     btn.classList.add('active');
     document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    // カメラタブ以外ではオーバーレイループを止める
+    if(btn.dataset.tab !== 'camera') {
+      if(animFrame) { cancelAnimationFrame(animFrame); animFrame=null; }
+    } else {
+      // カメラタブに戻ったらループ再開
+      if(stream) startOverlayLoop();
+    }
   });
 });
 
@@ -506,7 +513,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
 
 // ===== DRAW BLACKBOARD =====
-function getVal(id) { return document.getElementById(id).value || ''; }
+function getVal(id) { const el=document.getElementById(id); return el ? el.value||'' : ''; }
 
 function drawBlackboard(cvs) {
   const W = 500, H = 255;
@@ -576,10 +583,4 @@ function drawBlackboard(cvs) {
 }
 
 // ===== CAMERA =====
-let stream=null, facingMode='environment', overlayRatio=0.42, animFrame=null, photos=[];
-let isDragging=false, dragOffX=0, dragOffY=0, bbLeft=null, bbTop=null;
-
-const video=document.getElementById('video');
-const overlayBB=document.getElementById('overlay-bb');
-const mainCanvas=document.getElementById('canvas');
-const btnCa
+let stream=null, facingMode='environment', overlayRatio=0.42, animFrame=null, pho

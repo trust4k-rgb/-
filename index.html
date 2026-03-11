@@ -7,570 +7,423 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>生コン受入試験 電子黒板</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Share+Tech+Mono&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Share+Tech+Mono&display=swap');
 
-  :root {
-    --green: #1a7a3e;
-    --green-dark: #0f5229;
-    --green-light: #2da05a;
-    --gold: #c8a84b;
-    --white: #f5f2e8;
-    --text: #1a1a1a;
-    --border: #2a5c3a;
-    --input-bg: rgba(255,255,255,0.92);
-    --shadow: 0 4px 24px rgba(0,0,0,0.35);
-  }
+:root {
+  --green: #1a7a3e;
+  --green-dark: #0f5229;
+  --green-light: #2da05a;
+  --gold: #c8a84b;
+  --white: #f5f2e8;
+  --border: #2a5c3a;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Noto Sans JP', sans-serif;
-    background: #1a1a2e;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 12px 8px 24px;
-    position: relative;
-    overflow-x: hidden;
-  }
+body {
+  font-family: 'Noto Sans JP', sans-serif;
+  background: #12121f;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 8px 40px;
+  overflow-x: hidden;
+}
 
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background: 
-      radial-gradient(ellipse at 20% 30%, rgba(26,122,62,0.15) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 70%, rgba(200,168,75,0.08) 0%, transparent 50%);
-    pointer-events: none;
-  }
+/* ===== TAB NAV ===== */
+.tab-nav {
+  display: flex;
+  width: 100%;
+  max-width: 640px;
+  margin-bottom: 12px;
+  border-bottom: 2px solid rgba(200,168,75,0.25);
+}
+.tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.4);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 4px;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: all 0.2s;
+}
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
 
-  h1.app-title {
-    color: var(--gold);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 3px;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    opacity: 0.8;
-  }
+.tab-panel { display: none; width: 100%; max-width: 640px; }
+.tab-panel.active { display: block; }
 
-  /* ====== BLACKBOARD ====== */
-  .blackboard {
-    width: 100%;
-    max-width: 520px;
-    background: var(--green);
-    border: 3px solid var(--gold);
-    border-radius: 6px;
-    box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,0.3);
-    overflow: hidden;
-    position: relative;
-  }
+/* ===== BLACKBOARD FORM ===== */
+.blackboard {
+  width: 100%;
+  background: var(--green);
+  border: 3px solid var(--gold);
+  border-radius: 6px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 0 40px rgba(0,0,0,0.25);
+  overflow: hidden;
+  position: relative;
+}
+.blackboard::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(0,0,0,0.04) 30px),
+    repeating-linear-gradient(90deg, transparent, transparent 29px, rgba(0,0,0,0.02) 30px);
+  pointer-events: none; z-index: 0;
+}
+.blackboard-inner { position: relative; z-index: 1; }
 
-  .blackboard::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: 
-      repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(0,0,0,0.05) 30px),
-      repeating-linear-gradient(90deg, transparent, transparent 29px, rgba(0,0,0,0.03) 30px);
-    pointer-events: none;
-    z-index: 0;
-  }
+.bb-table { width: 100%; border-collapse: collapse; }
+.bb-table td { border: 1px solid rgba(200,168,75,0.4); padding: 0; vertical-align: middle; }
 
-  .blackboard-inner {
-    position: relative;
-    z-index: 1;
-  }
+.bb-label {
+  background: rgba(0,0,0,0.28);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 7px 8px;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  width: 72px;
+}
 
-  /* Title row */
-  .bb-title {
-    background: var(--green-dark);
-    border-bottom: 2px solid var(--gold);
-    padding: 8px 12px;
-    text-align: center;
-    color: var(--white);
-    font-size: 15px;
-    font-weight: 900;
-    letter-spacing: 2px;
-  }
+.bb-input-cell { padding: 3px 6px; }
 
-  /* Table inside blackboard */
-  .bb-table {
-    width: 100%;
-    border-collapse: collapse;
-  }
+.bb-select, .bb-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(200,168,75,0.45);
+  color: var(--white);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 2px;
+  outline: none;
+  caret-color: var(--gold);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.bb-select { cursor: pointer; }
+.bb-select:focus, .bb-input:focus { border-bottom-color: var(--gold); background: rgba(255,255,255,0.05); }
+.bb-input::placeholder { color: rgba(255,255,255,0.28); font-size: 11px; }
+.bb-select option { background: #1a4a2e; color: #fff; }
 
-  .bb-table td, .bb-table th {
-    border: 1px solid rgba(200,168,75,0.5);
-    padding: 0;
-    vertical-align: middle;
-  }
+.bb-unit { color: rgba(255,255,255,0.55); font-size: 10.5px; padding: 0 2px 0 1px; white-space: nowrap; }
+.bb-input-with-unit { display: flex; align-items: center; }
 
-  .bb-label {
-    background: rgba(0,0,0,0.25);
-    color: var(--gold);
-    font-size: 11px;
-    font-weight: 700;
-    padding: 6px 8px;
-    white-space: nowrap;
-    min-width: 72px;
-    letter-spacing: 0.5px;
-  }
+/* Results 3-col */
+.results-grid { display: grid; grid-template-columns: repeat(3, 1fr); }
+.result-item {
+  border: 1px solid rgba(200,168,75,0.35);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 5px 2px 6px; gap: 2px;
+}
+.result-item .rlabel {
+  color: var(--gold); font-size: 9.5px; font-weight: 700;
+  letter-spacing: 0.2px; text-align: center; line-height: 1.2;
+}
+.result-item .bb-input {
+  width: 60px; text-align: center;
+  font-size: 14px; font-weight: 700;
+  border-bottom-color: rgba(200,168,75,0.35);
+}
+.result-item .bb-unit { font-size: 10px; }
+.result-item .bb-input-with-unit { justify-content: center; }
 
-  .bb-input-cell {
-    padding: 4px 6px;
-    background: transparent;
-  }
+/* Remarks */
+.bb-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-top: 1px solid rgba(200,168,75,0.28);
+  color: var(--white);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 12px;
+  padding: 5px 8px;
+  resize: none; outline: none;
+  caret-color: var(--gold);
+  min-height: 34px;
+  line-height: 1.6;
+}
+.bb-textarea::placeholder { color: rgba(255,255,255,0.25); font-size: 11px; }
 
-  .bb-input {
-    width: 100%;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid rgba(200,168,75,0.6);
-    color: var(--white);
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    padding: 4px 2px;
-    outline: none;
-    text-align: center;
-    caret-color: var(--gold);
-    transition: border-color 0.2s;
-  }
+/* ===== CAMERA ===== */
+.camera-wrap { width: 100%; position: relative; margin-top: 12px; }
 
-  .bb-input:focus {
-    border-bottom-color: var(--gold);
-    background: rgba(255,255,255,0.06);
-  }
+#video-container {
+  width: 100%;
+  aspect-ratio: 16/9;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  border: 2px solid var(--border);
+  touch-action: none;
+}
 
-  .bb-input::placeholder {
-    color: rgba(255,255,255,0.35);
-    font-size: 11px;
-  }
+#video { width: 100%; height: 100%; object-fit: cover; display: block; }
 
-  .bb-unit {
-    color: rgba(255,255,255,0.6);
-    font-size: 11px;
-    padding: 0 4px 0 2px;
-    white-space: nowrap;
-  }
+#overlay-bb {
+  position: absolute;
+  bottom: 10px; left: 10px;
+  cursor: grab;
+  z-index: 10;
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,0.85));
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  display: none;
+}
+#overlay-bb:active { cursor: grabbing; }
 
-  .bb-input-with-unit {
-    display: flex;
-    align-items: center;
-  }
+.cam-controls {
+  display: flex; gap: 8px; margin-top: 10px;
+  justify-content: center; flex-wrap: wrap;
+}
+.overlay-size-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 8px; justify-content: flex-end;
+}
+.overlay-size-row label { color: rgba(255,255,255,0.4); font-size: 11px; }
+.overlay-size-row input[type=range] { width: 88px; accent-color: var(--gold); }
 
-  /* Section headers */
-  .bb-section-header {
-    background: rgba(0,0,0,0.35);
-    color: var(--gold);
-    font-size: 11px;
-    font-weight: 700;
-    text-align: center;
-    padding: 5px;
-    letter-spacing: 2px;
-    border-top: 1px solid rgba(200,168,75,0.4);
-    border-bottom: 1px solid rgba(200,168,75,0.4);
-  }
+/* Buttons */
+.btn {
+  font-family: 'Noto Sans JP', sans-serif;
+  font-weight: 700; font-size: 13px;
+  border: none; border-radius: 4px;
+  padding: 11px 18px; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: all 0.15s;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--green-light); color: #fff; }
+.btn-capture { background: var(--gold); color: #111; font-size: 15px; padding: 13px 26px; }
+.btn-secondary { background: rgba(255,255,255,0.1); color: var(--white); border: 1px solid rgba(255,255,255,0.15); }
+.btn-sm { font-size: 11px; padding: 7px 12px; }
 
-  /* Results grid — 2 col */
-  .results-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0;
-  }
+#canvas { display: none; }
 
-  .result-item {
-    border: 1px solid rgba(200,168,75,0.4);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 6px 4px;
-    gap: 2px;
-  }
+/* Gallery */
+.gallery-title {
+  color: var(--gold); font-size: 12px; font-weight: 700;
+  letter-spacing: 1px; margin: 16px 0 8px;
+  border-bottom: 1px solid rgba(200,168,75,0.2); padding-bottom: 6px;
+}
+.gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.gallery-item {
+  position: relative; border-radius: 3px; overflow: hidden;
+  border: 1px solid var(--border); aspect-ratio: 16/9; cursor: pointer;
+}
+.gallery-item img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery-item .del-btn {
+  position: absolute; top: 3px; right: 3px;
+  background: rgba(160,30,30,0.85); color: #fff;
+  border: none; border-radius: 50%; width: 20px; height: 20px;
+  font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.gallery-item .dl-btn {
+  position: absolute; bottom: 3px; right: 3px;
+  background: rgba(0,0,0,0.72); color: var(--gold);
+  border: none; border-radius: 3px; padding: 2px 5px;
+  font-size: 10px; cursor: pointer; font-family: 'Noto Sans JP', sans-serif;
+}
 
-  .result-item .bb-label {
-    background: transparent;
-    text-align: center;
-    font-size: 10px;
-    padding: 0;
-    min-width: unset;
-  }
+/* Master */
+.master-section { margin-bottom: 22px; }
+.master-title { color: var(--gold); font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-bottom: 8px; }
+.master-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.master-item {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(200,168,75,0.18);
+  border-radius: 4px; padding: 8px 12px;
+  color: var(--white); font-size: 13px;
+}
+.master-item button {
+  background: rgba(160,30,30,0.7); color: #fff;
+  border: none; border-radius: 3px; padding: 3px 8px;
+  font-size: 11px; cursor: pointer; white-space: nowrap;
+}
+.master-add-row { display: flex; gap: 8px; }
+.master-add-input {
+  flex: 1;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(200,168,75,0.3);
+  border-radius: 4px; color: var(--white);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 13px; padding: 8px 10px; outline: none;
+  caret-color: var(--gold);
+}
+.master-add-input:focus { border-color: var(--gold); }
+.master-add-input::placeholder { color: rgba(255,255,255,0.28); }
+.section-div { border: none; border-top: 1px solid rgba(200,168,75,0.12); margin: 14px 0; }
 
-  .result-item .bb-input-with-unit {
-    justify-content: center;
-  }
-
-  .result-item .bb-input {
-    width: 70px;
-    text-align: center;
-  }
-
-  /* Remarks */
-  .bb-textarea {
-    width: 100%;
-    background: transparent;
-    border: 1px solid rgba(200,168,75,0.4);
-    color: var(--white);
-    font-family: 'Noto Sans JP', sans-serif;
-    font-size: 12px;
-    padding: 6px 8px;
-    resize: none;
-    outline: none;
-    caret-color: var(--gold);
-    min-height: 52px;
-    line-height: 1.6;
-  }
-
-  .bb-textarea:focus { border-color: var(--gold); }
-  .bb-textarea::placeholder { color: rgba(255,255,255,0.3); font-size: 11px; }
-
-  /* Timestamp */
-  .bb-timestamp {
-    text-align: right;
-    padding: 4px 10px 6px;
-    color: rgba(200,168,75,0.7);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 1px;
-  }
-
-  /* ====== CAMERA SECTION ====== */
-  .camera-section {
-    width: 100%;
-    max-width: 520px;
-    margin-top: 14px;
-    position: relative;
-  }
-
-  #video-container {
-    width: 100%;
-    aspect-ratio: 4/3;
-    background: #000;
-    border-radius: 4px;
-    overflow: hidden;
-    position: relative;
-    border: 2px solid var(--border);
-  }
-
-  #video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  /* Overlay of blackboard on video */
-  #overlay-bb {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    width: 52%;
-    max-width: 240px;
-    pointer-events: none;
-    z-index: 10;
-    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7));
-    transform-origin: top left;
-  }
-
-  .camera-controls {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-
-  .btn {
-    font-family: 'Noto Sans JP', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    border: none;
-    border-radius: 4px;
-    padding: 12px 20px;
-    cursor: pointer;
-    letter-spacing: 1px;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .btn-primary {
-    background: var(--green-light);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(26,122,62,0.4);
-  }
-  .btn-primary:active { background: var(--green-dark); transform: scale(0.97); }
-
-  .btn-capture {
-    background: var(--gold);
-    color: #1a1a1a;
-    font-size: 15px;
-    padding: 14px 28px;
-    box-shadow: 0 2px 12px rgba(200,168,75,0.4);
-  }
-  .btn-capture:active { background: #a88a38; transform: scale(0.97); }
-
-  .btn-secondary {
-    background: rgba(255,255,255,0.1);
-    color: var(--white);
-    border: 1px solid rgba(255,255,255,0.2);
-  }
-  .btn-secondary:active { background: rgba(255,255,255,0.2); }
-
-  .btn-danger {
-    background: rgba(180,40,40,0.7);
-    color: #fff;
-  }
-
-  /* Canvas (hidden) */
-  #canvas { display: none; }
-
-  /* ====== GALLERY ====== */
-  .gallery-section {
-    width: 100%;
-    max-width: 520px;
-    margin-top: 20px;
-  }
-
-  .gallery-title {
-    color: var(--gold);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid rgba(200,168,75,0.3);
-    padding-bottom: 6px;
-  }
-
-  .gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 8px;
-  }
-
-  .gallery-item {
-    position: relative;
-    border-radius: 3px;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    aspect-ratio: 4/3;
-  }
-
-  .gallery-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  .gallery-item .del-btn {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background: rgba(180,40,40,0.85);
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 22px;
-    height: 22px;
-    font-size: 13px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-  }
-
-  .gallery-item .dl-btn {
-    position: absolute;
-    bottom: 4px;
-    right: 4px;
-    background: rgba(0,0,0,0.7);
-    color: var(--gold);
-    border: none;
-    border-radius: 3px;
-    padding: 2px 6px;
-    font-size: 11px;
-    cursor: pointer;
-    font-family: 'Noto Sans JP', sans-serif;
-  }
-
-  /* No camera message */
-  .no-camera {
-    color: rgba(255,255,255,0.5);
-    text-align: center;
-    padding: 30px;
-    font-size: 13px;
-    line-height: 1.8;
-  }
-
-  /* Preview modal */
-  .modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-  }
-  .modal.open { display: flex; flex-direction: column; gap: 12px; }
-  .modal img { max-width: 100%; max-height: 75vh; border-radius: 4px; }
-  .modal-actions { display: flex; gap: 10px; }
-
-  select.bb-input {
-    -webkit-appearance: none;
-    appearance: none;
-    cursor: pointer;
-  }
-
-  .row-flex {
-    display: flex;
-    align-items: center;
-  }
-
-  /* Mobile overlay size toggle */
-  .overlay-size-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 8px;
-    justify-content: flex-end;
-    padding-right: 4px;
-  }
-  .overlay-size-row label {
-    color: rgba(255,255,255,0.5);
-    font-size: 11px;
-  }
-  .overlay-size-row input[type=range] {
-    width: 100px;
-    accent-color: var(--gold);
-  }
+/* Modal */
+.modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.93); z-index: 1000;
+  align-items: center; justify-content: center;
+  padding: 16px; flex-direction: column; gap: 12px;
+}
+.modal.open { display: flex; }
+.modal img { max-width: 100%; max-height: 75vh; border-radius: 4px; }
+.modal-actions { display: flex; gap: 10px; }
 </style>
 </head>
 <body>
 
-<h1 class="app-title">🏗 生コン受入試験 電子黒板</h1>
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="camera">📷 カメラ</button>
+  <button class="tab-btn" data-tab="blackboard">📋 黒板編集</button>
+  <button class="tab-btn" data-tab="master">⚙ マスター</button>
+</nav>
 
-<!-- ===== BLACKBOARD ===== -->
-<div class="blackboard" id="blackboard">
-  <div class="blackboard-inner">
-    <div class="bb-title">コンクリート品質管理試験</div>
-    <table class="bb-table">
-      <tr>
-        <td class="bb-label">工事名</td>
-        <td class="bb-input-cell" colspan="3">
-          <input class="bb-input" id="f-koujimei" placeholder="工事名を入力" style="text-align:left;font-size:12px;">
-        </td>
-      </tr>
-      <tr>
-        <td class="bb-label">打設箇所</td>
-        <td class="bb-input-cell">
-          <input class="bb-input" id="f-kakou" placeholder="部位">
-        </td>
-        <td class="bb-label" style="text-align:center">配合</td>
-        <td class="bb-input-cell">
-          <input class="bb-input" id="f-haigoban" placeholder="配合番号">
-        </td>
-      </tr>
-      <tr>
-        <td class="bb-label">試験日</td>
-        <td class="bb-input-cell">
-          <input class="bb-input" id="f-date" type="date">
-        </td>
-        <td class="bb-label" style="text-align:center">回数</td>
-        <td class="bb-input-cell">
-          <input class="bb-input" id="f-kaisu" placeholder="1台目">
-        </td>
-      </tr>
-    </table>
-
-    <div class="bb-section-header">― 試 験 結 果 ―</div>
-
-    <div class="results-grid">
-      <div class="result-item">
-        <div class="bb-label">スランプ</div>
-        <div class="bb-input-with-unit">
-          <input class="bb-input" id="r-slump" placeholder="0.0" style="width:55px">
-          <span class="bb-unit">cm</span>
-        </div>
-      </div>
-      <div class="result-item">
-        <div class="bb-label">外気温</div>
-        <div class="bb-input-with-unit">
-          <input class="bb-input" id="r-gaikion" placeholder="0.0" style="width:55px">
-          <span class="bb-unit">°C</span>
-        </div>
-      </div>
-      <div class="result-item">
-        <div class="bb-label">空気量</div>
-        <div class="bb-input-with-unit">
-          <input class="bb-input" id="r-kuuki" placeholder="0.0" style="width:55px">
-          <span class="bb-unit">%</span>
-        </div>
-      </div>
-      <div class="result-item">
-        <div class="bb-label">塩化物量</div>
-        <div class="bb-input-with-unit">
-          <input class="bb-input" id="r-ensika" placeholder="0.000" style="width:55px">
-          <span class="bb-unit">kg/m³</span>
-        </div>
-      </div>
-      <div class="result-item" style="grid-column: 1/-1;">
-        <div class="bb-label">コンクリート温度</div>
-        <div class="bb-input-with-unit">
-          <input class="bb-input" id="r-con-temp" placeholder="0.0" style="width:70px">
-          <span class="bb-unit">°C</span>
-        </div>
+<!-- ===== CAMERA TAB ===== -->
+<div class="tab-panel active" id="tab-camera">
+  <div class="camera-wrap">
+    <div id="video-container">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay-bb"></canvas>
+      <div id="no-camera" style="display:none;color:rgba(255,255,255,0.45);text-align:center;padding:40px;font-size:13px;line-height:2.2">
+        📷 カメラが利用できません<br><small>ブラウザでカメラを許可してください</small>
       </div>
     </div>
+    <div class="overlay-size-row">
+      <label>黒板サイズ:</label>
+      <input type="range" id="overlay-size" min="20" max="65" value="42">
+      <label id="overlay-size-label">42%</label>
+    </div>
+    <div class="cam-controls">
+      <button class="btn btn-secondary" id="btn-start-camera">📷 カメラ起動</button>
+      <button class="btn btn-capture" id="btn-capture" disabled>⚡ 撮影</button>
+      <button class="btn btn-secondary" id="btn-flip" style="display:none">🔄 切替</button>
+    </div>
+  </div>
+  <div class="gallery-title">📁 撮影済み写真（<span id="photo-count">0</span>枚）</div>
+  <div class="gallery-grid" id="gallery"></div>
+</div>
 
-    <div class="bb-section-header" style="font-size:10px;letter-spacing:1px;">備　考</div>
-    <textarea class="bb-textarea" id="f-biko" placeholder="単位水量・テストピース採取数・立会者 など"></textarea>
+<!-- ===== BLACKBOARD EDIT TAB ===== -->
+<div class="tab-panel" id="tab-blackboard">
+  <div class="blackboard">
+    <div class="blackboard-inner">
+      <table class="bb-table">
+        <tr>
+          <td class="bb-label">工 事 名</td>
+          <td class="bb-input-cell">
+            <select class="bb-select" id="f-koujimei"><option value="">── 選択 ──</option></select>
+          </td>
+        </tr>
+        <tr>
+          <td class="bb-label">打設箇所</td>
+          <td class="bb-input-cell">
+            <select class="bb-select" id="f-kakou"><option value="">── 選択 ──</option></select>
+          </td>
+        </tr>
+        <tr>
+          <td class="bb-label">配　　合</td>
+          <td class="bb-input-cell">
+            <select class="bb-select" id="f-haigo"><option value="">── 選択 ──</option></select>
+          </td>
+        </tr>
+        <tr>
+          <td class="bb-label">試 験 日</td>
+          <td class="bb-input-cell">
+            <input class="bb-input" id="f-date" type="date">
+          </td>
+        </tr>
+      </table>
 
-    <div class="bb-timestamp" id="bb-timestamp">-- : -- : --</div>
+      <div class="results-grid">
+        <div class="result-item">
+          <div class="rlabel">スランプ</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-slump" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">cm</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">空 気 量</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-kuuki" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">%</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">塩 化 物</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-ensika" placeholder="0.000" inputmode="decimal" style="width:50px;font-size:12px">
+            <span class="bb-unit">kg/m³</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">外 気 温</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-gaikion" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">°C</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">ｺﾝｸﾘｰﾄ温度</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-con-temp" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">°C</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">立 会 人</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-tachiai" placeholder="氏名" style="width:56px;font-size:12px">
+            <span class="bb-unit">氏</span>
+          </div>
+        </div>
+      </div>
+
+      <textarea class="bb-textarea" id="f-biko" rows="2" placeholder="備考（単位水量・テストピース採取数 など）"></textarea>
+    </div>
   </div>
 </div>
 
-<!-- ===== CAMERA ===== -->
-<div class="camera-section">
-  <div id="video-container">
-    <video id="video" autoplay playsinline muted></video>
-    <!-- Overlay canvas (blackboard image on video) -->
-    <canvas id="overlay-bb" style="display:none"></canvas>
-    <div class="no-camera" id="no-camera" style="display:none">
-      📷 カメラが利用できません<br>
-      <small>ブラウザの設定でカメラを許可してください</small>
+<!-- ===== MASTER TAB ===== -->
+<div class="tab-panel" id="tab-master">
+  <div class="master-section">
+    <div class="master-title">🏗 工事名</div>
+    <div class="master-list" id="list-koujimei"></div>
+    <div class="master-add-row">
+      <input class="master-add-input" id="add-koujimei" placeholder="工事名を入力">
+      <button class="btn btn-primary btn-sm" onclick="addMaster('koujimei')">＋ 追加</button>
     </div>
   </div>
-
-  <div class="overlay-size-row">
-    <label>黒板サイズ:</label>
-    <input type="range" id="overlay-size" min="30" max="70" value="50">
-    <label id="overlay-size-label">50%</label>
+  <hr class="section-div">
+  <div class="master-section">
+    <div class="master-title">📍 打設箇所</div>
+    <div class="master-list" id="list-kakou"></div>
+    <div class="master-add-row">
+      <input class="master-add-input" id="add-kakou" placeholder="打設箇所を入力">
+      <button class="btn btn-primary btn-sm" onclick="addMaster('kakou')">＋ 追加</button>
+    </div>
   </div>
-
-  <div class="camera-controls">
-    <button class="btn btn-secondary" id="btn-start-camera">📷 カメラ起動</button>
-    <button class="btn btn-capture" id="btn-capture" disabled>⚡ 撮影</button>
-    <button class="btn btn-secondary" id="btn-flip" style="display:none">🔄 カメラ切替</button>
+  <hr class="section-div">
+  <div class="master-section">
+    <div class="master-title">⚗ 配合</div>
+    <div class="master-list" id="list-haigo"></div>
+    <div class="master-add-row">
+      <input class="master-add-input" id="add-haigo" placeholder="配合番号を入力">
+      <button class="btn btn-primary btn-sm" onclick="addMaster('haigo')">＋ 追加</button>
+    </div>
   </div>
 </div>
 
 <canvas id="canvas"></canvas>
 
-<!-- ===== GALLERY ===== -->
-<div class="gallery-section">
-  <div class="gallery-title">📁 撮影済み写真 (<span id="photo-count">0</span>枚)</div>
-  <div class="gallery-grid" id="gallery"></div>
-</div>
-
-<!-- Preview Modal -->
 <div class="modal" id="modal">
   <img id="modal-img" src="" alt="">
   <div class="modal-actions">
@@ -580,306 +433,302 @@
 </div>
 
 <script>
-// ===== State =====
-let stream = null;
-let facingMode = 'environment';
-let photos = []; // { dataURL, filename }
-let overlayRatio = 0.50;
-let animFrame = null;
+// ===== MASTER DATA =====
+const MASTER_KEYS = ['koujimei','kakou','haigo'];
 
-// ===== Timestamp =====
-function updateTimestamp() {
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  document.getElementById('bb-timestamp').textContent =
-    `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}  ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+function loadMaster(key) {
+  try { return JSON.parse(localStorage.getItem('master_'+key)||'[]'); } catch(e) { return []; }
 }
-setInterval(updateTimestamp, 1000);
-updateTimestamp();
+function saveMaster(key, arr) { localStorage.setItem('master_'+key, JSON.stringify(arr)); }
 
-// Set today's date
-document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
-
-// ===== Draw blackboard to offscreen canvas =====
-function drawBlackboard(targetCanvas) {
-  const dpr = window.devicePixelRatio || 1;
-  const W = 480, H = 320;
-  targetCanvas.width = W;
-  targetCanvas.height = H;
-  const ctx = targetCanvas.getContext('2d');
-
-  // Background
-  ctx.fillStyle = '#1a7a3e';
-  ctx.fillRect(0, 0, W, H);
-
-  // Texture
-  for(let y=0;y<H;y+=30){ ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-
-  // Border
-  ctx.strokeStyle = '#c8a84b';
-  ctx.lineWidth = 3;
-  ctx.strokeRect(1.5, 1.5, W-3, H-3);
-
-  // Title bar
-  ctx.fillStyle = '#0f5229';
-  ctx.fillRect(3, 3, W-6, 32);
-  ctx.strokeStyle = '#c8a84b';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(3, 35, W-6, 1);
-
-  ctx.fillStyle = '#f5f2e8';
-  ctx.font = 'bold 16px "Noto Sans JP", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('コンクリート品質管理試験', W/2, 24);
-
-  // Helper: draw table row
-  function row(y, h, label, value, labelW=90) {
-    ctx.strokeStyle = 'rgba(200,168,75,0.5)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(3, y, W-6, h);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(3, y, labelW, h);
-    ctx.fillStyle = '#c8a84b';
-    ctx.font = 'bold 11px "Noto Sans JP", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(label, 8, y + h/2 + 4);
-    ctx.fillStyle = '#f5f2e8';
-    ctx.font = '12px "Noto Sans JP", sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(value, labelW + 6, y + h/2 + 4);
-  }
-
-  function val(id) { return document.getElementById(id).value || '　'; }
-
-  row(36, 26, '工 事 名', val('f-koujimei'));
-  // split row
-  const r2y = 62, r2h = 26;
-  ctx.strokeStyle = 'rgba(200,168,75,0.5)';
-  ctx.strokeRect(3, r2y, W-6, r2h);
-  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(3, r2y, 72, r2h);
-  ctx.fillStyle = '#c8a84b'; ctx.font='bold 11px "Noto Sans JP",sans-serif'; ctx.textAlign='left';
-  ctx.fillText('打設箇所', 6, r2y+r2h/2+4);
-  ctx.fillStyle='#f5f2e8'; ctx.font='12px "Noto Sans JP",sans-serif';
-  ctx.fillText(val('f-kakou'), 78, r2y+r2h/2+4);
-  ctx.strokeStyle='rgba(200,168,75,0.5)';
-  ctx.beginPath(); ctx.moveTo(W/2, r2y); ctx.lineTo(W/2, r2y+r2h); ctx.stroke();
-  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(W/2, r2y, 50, r2h);
-  ctx.fillStyle='#c8a84b'; ctx.fillText('配 合', W/2+4, r2y+r2h/2+4);
-  ctx.fillStyle='#f5f2e8'; ctx.fillText(val('f-haigoban'), W/2+56, r2y+r2h/2+4);
-
-  const r3y = 88, r3h = 26;
-  ctx.strokeStyle='rgba(200,168,75,0.5)'; ctx.strokeRect(3, r3y, W-6, r3h);
-  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(3, r3y, 72, r3h);
-  ctx.fillStyle='#c8a84b'; ctx.font='bold 11px "Noto Sans JP",sans-serif';
-  ctx.fillText('試 験 日', 6, r3y+r3h/2+4);
-  const rawDate = val('f-date');
-  const displayDate = rawDate && rawDate !== '　' ? rawDate.replace(/-/g,'/') : '　';
-  ctx.fillStyle='#f5f2e8'; ctx.font='12px "Noto Sans JP",sans-serif';
-  ctx.fillText(displayDate, 78, r3y+r3h/2+4);
-  ctx.beginPath(); ctx.moveTo(W/2, r3y); ctx.lineTo(W/2, r3y+r3h); ctx.stroke();
-  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(W/2, r3y, 50, r3h);
-  ctx.fillStyle='#c8a84b'; ctx.fillText('回 数', W/2+4, r3y+r3h/2+4);
-  ctx.fillStyle='#f5f2e8'; ctx.fillText(val('f-kaisu'), W/2+56, r3y+r3h/2+4);
-
-  // Section header
-  const shY = 114;
-  ctx.fillStyle = 'rgba(0,0,0,0.35)';
-  ctx.fillRect(3, shY, W-6, 20);
-  ctx.fillStyle = '#c8a84b'; ctx.font='bold 11px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
-  ctx.fillText('― 試 験 結 果 ―', W/2, shY+14);
-
-  // Results grid (2 col)
-  const resY = 134, resH = 30;
-  const cols = [
-    ['スランプ', val('r-slump')+' cm', 3, W/2-3],
-    ['外気温', val('r-gaikion')+' °C', W/2, W/2-3],
-    ['空 気 量', val('r-kuuki')+' %', 3, W/2-3],
-    ['塩化物量', val('r-ensika')+' kg/m³', W/2, W/2-3],
-  ];
-  cols.forEach(([lbl, v, x, w], i) => {
-    const ry = resY + Math.floor(i/2)*resH;
-    ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.strokeRect(x, ry, w, resH);
-    ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(x, ry, w, 13);
-    ctx.fillStyle='#c8a84b'; ctx.font='bold 10px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
-    ctx.fillText(lbl, x+w/2, ry+11);
-    ctx.fillStyle='#f5f2e8'; ctx.font='bold 13px "Noto Sans JP",sans-serif';
-    ctx.fillText(v, x+w/2, ry+resH-6);
+function renderMasterList(key) {
+  const arr = loadMaster(key);
+  const list = document.getElementById('list-'+key);
+  list.innerHTML = arr.length === 0
+    ? '<div style="color:rgba(255,255,255,0.28);font-size:12px;padding:4px 0">まだ登録がありません</div>'
+    : '';
+  arr.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'master-item';
+    div.innerHTML = `<span>${item}</span><button onclick="deleteMaster('${key}',${i})">削除</button>`;
+    list.appendChild(div);
   });
-  // Con temp (full width)
-  const ctY = resY + 2*resH;
-  ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.strokeRect(3, ctY, W-6, resH);
-  ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(3, ctY, W-6, 13);
-  ctx.fillStyle='#c8a84b'; ctx.font='bold 10px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
-  ctx.fillText('コンクリート温度', W/2, ctY+11);
-  ctx.fillStyle='#f5f2e8'; ctx.font='bold 13px "Noto Sans JP",sans-serif';
-  ctx.fillText(val('r-con-temp')+' °C', W/2, ctY+resH-6);
-
-  // Biko
-  const bikoY = ctY + resH;
-  ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.strokeRect(3, bikoY, W-6, 34);
-  ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(3, bikoY, W-6, 13);
-  ctx.fillStyle='#c8a84b'; ctx.font='bold 10px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
-  ctx.fillText('備　考', W/2, bikoY+11);
-  ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.font='11px "Noto Sans JP",sans-serif'; ctx.textAlign='left';
-  const bikoVal = document.getElementById('f-biko').value || '';
-  const lines = bikoVal.split('\n').slice(0,2);
-  lines.forEach((line,i) => ctx.fillText(line.substring(0,36), 8, bikoY+24+i*13));
-
-  // Timestamp
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const ts = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-  ctx.fillStyle='rgba(200,168,75,0.7)'; ctx.font='9px "Share Tech Mono",monospace'; ctx.textAlign='right';
-  ctx.fillText(ts, W-8, H-5);
+  refreshSelect(key);
 }
 
-// ===== Camera =====
-const video = document.getElementById('video');
-const overlayCanvas = document.getElementById('overlay-bb');
-const mainCanvas = document.getElementById('canvas');
-const btnCapture = document.getElementById('btn-capture');
-const btnFlip = document.getElementById('btn-flip');
-const noCameraMsg = document.getElementById('no-camera');
-
-async function startCamera() {
-  if(stream) { stream.getTracks().forEach(t=>t.stop()); }
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode, width:{ideal:1920}, height:{ideal:1080} },
-      audio: false
-    });
-    video.srcObject = stream;
-    video.style.display = 'block';
-    noCameraMsg.style.display = 'none';
-    btnCapture.disabled = false;
-    btnFlip.style.display = 'inline-flex';
-    overlayCanvas.style.display = 'block';
-    startOverlayLoop();
-  } catch(e) {
-    video.style.display = 'none';
-    noCameraMsg.style.display = 'flex';
-    overlayCanvas.style.display = 'none';
-    console.error('Camera error:', e);
-  }
+function addMaster(key) {
+  const input = document.getElementById('add-'+key);
+  const v = input.value.trim();
+  if (!v) return;
+  const arr = loadMaster(key);
+  if (!arr.includes(v)) { arr.push(v); saveMaster(key, arr); }
+  input.value = '';
+  renderMasterList(key);
 }
 
-document.getElementById('btn-start-camera').addEventListener('click', startCamera);
-btnFlip.addEventListener('click', () => {
-  facingMode = facingMode === 'environment' ? 'user' : 'environment';
-  startCamera();
+function deleteMaster(key, idx) {
+  const arr = loadMaster(key);
+  arr.splice(idx, 1);
+  saveMaster(key, arr);
+  renderMasterList(key);
+}
+
+function refreshSelect(key) {
+  const arr = loadMaster(key);
+  const selId = {koujimei:'f-koujimei', kakou:'f-kakou', haigo:'f-haigo'}[key];
+  const sel = document.getElementById(selId);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">── 選択 ──</option>';
+  arr.forEach(item => {
+    const o = document.createElement('option');
+    o.value = item; o.textContent = item;
+    sel.appendChild(o);
+  });
+  if (arr.includes(cur)) sel.value = cur;
+}
+
+MASTER_KEYS.forEach(key => {
+  document.getElementById('add-'+key).addEventListener('keydown', e => { if(e.key==='Enter') addMaster(key); });
+});
+MASTER_KEYS.forEach(renderMasterList);
+
+// ===== TABS =====
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
 });
 
-// Overlay loop — draw blackboard over video preview
+// ===== DATE DEFAULT =====
+document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+// ===== DRAW BLACKBOARD =====
+function getVal(id) { return document.getElementById(id).value || ''; }
+
+function drawBlackboard(cvs) {
+  const W = 500, H = 255;
+  cvs.width = W; cvs.height = H;
+  const ctx = cvs.getContext('2d');
+
+  // BG + texture
+  ctx.fillStyle = '#1a7a3e'; ctx.fillRect(0,0,W,H);
+  for(let y=0;y<H;y+=30){
+    ctx.strokeStyle='rgba(0,0,0,0.04)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke();
+  }
+  // border
+  ctx.strokeStyle='#c8a84b'; ctx.lineWidth=3;
+  ctx.strokeRect(1.5,1.5,W-3,H-3);
+
+  const LW=70, rowH=26;
+  function bdr(x,y,w,h){ ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.lineWidth=1; ctx.strokeRect(x,y,w,h); }
+  function lbg(x,y,w,h){ ctx.fillStyle='rgba(0,0,0,0.28)'; ctx.fillRect(x,y,w,h); }
+  function gold(t,x,y,sz=10){ ctx.fillStyle='#c8a84b'; ctx.font=`bold ${sz}px "Noto Sans JP",sans-serif`; ctx.textAlign='left'; ctx.fillText(t,x,y); }
+  function white(t,x,y,sz=11,al='left'){ ctx.fillStyle='#f5f2e8'; ctx.font=`${sz}px "Noto Sans JP",sans-serif`; ctx.textAlign=al; ctx.fillText(t,x,y); }
+  function bwhite(t,x,y,sz=12,al='center'){ ctx.fillStyle='#f5f2e8'; ctx.font=`bold ${sz}px "Noto Sans JP",sans-serif`; ctx.textAlign=al; ctx.fillText(t,x,y); }
+
+  // Info rows
+  const infoRows = [
+    ['工 事 名', getVal('f-koujimei')],
+    ['打設箇所', getVal('f-kakou')],
+    ['配　　合', getVal('f-haigo')],
+    ['試 験 日', (()=>{ const d=getVal('f-date'); return d?d.replace(/-/g,'/'):''; })()],
+  ];
+  infoRows.forEach(([lbl,v],i)=>{
+    const y=3+i*rowH;
+    bdr(3,y,W-6,rowH); lbg(3,y,LW,rowH);
+    gold(lbl, 7, y+rowH/2+4);
+    white(v.substring(0,26), LW+6, y+rowH/2+4, 11);
+  });
+
+  // Results 3-col
+  const resY = 3 + infoRows.length*rowH;
+  const colW = (W-6)/3;
+  const resH = 34;
+  const results = [
+    ['スランプ',   getVal('r-slump'),    'cm'],
+    ['空 気 量',   getVal('r-kuuki'),    '%'],
+    ['塩 化 物',   getVal('r-ensika'),   'kg/m³'],
+    ['外 気 温',   getVal('r-gaikion'),  '°C'],
+    ['ｺﾝｸﾘｰﾄ温度', getVal('r-con-temp'), '°C'],
+    ['立 会 人',   getVal('r-tachiai'),  '氏'],
+  ];
+  results.forEach(([lbl,v,unit],i)=>{
+    const col=i%3, row2=Math.floor(i/3);
+    const x=3+col*colW, y=resY+row2*resH;
+    bdr(x,y,colW,resH); lbg(x,y,colW,13);
+    ctx.fillStyle='#c8a84b'; ctx.font='bold 9px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
+    ctx.fillText(lbl, x+colW/2, y+11);
+    const vs = v ? v+' '+unit : '—';
+    bwhite(vs, x+colW/2, y+resH-7, 12, 'center');
+  });
+
+  // Biko
+  const bikoY = resY+2*resH;
+  const bikoH = H-bikoY-3;
+  bdr(3,bikoY,W-6,bikoH); lbg(3,bikoY,LW,bikoH);
+  gold('備　考', 7, bikoY+bikoH/2+4);
+  const bikoLines = getVal('f-biko').split('\n').slice(0,2);
+  bikoLines.forEach((line,li)=> white(line.substring(0,30), LW+6, bikoY+13+li*13, 10));
+}
+
+// ===== CAMERA =====
+let stream=null, facingMode='environment', overlayRatio=0.42, animFrame=null, photos=[];
+let isDragging=false, dragOffX=0, dragOffY=0, bbLeft=null, bbTop=null;
+
+const video=document.getElementById('video');
+const overlayBB=document.getElementById('overlay-bb');
+const mainCanvas=document.getElementById('canvas');
+const btnCapture=document.getElementById('btn-capture');
+const btnFlip=document.getElementById('btn-flip');
+const noCameraMsg=document.getElementById('no-camera');
+const videoContainer=document.getElementById('video-container');
+
+async function startCamera() {
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode, width:{ideal:1920}, height:{ideal:1080} }, audio:false
+    });
+    video.srcObject=stream;
+    video.style.display='block';
+    noCameraMsg.style.display='none';
+    btnCapture.disabled=false;
+    btnFlip.style.display='inline-flex';
+    overlayBB.style.display='block';
+    bbLeft=null; bbTop=null;
+    startOverlayLoop();
+  } catch(e) {
+    video.style.display='none';
+    noCameraMsg.style.display='flex';
+    overlayBB.style.display='none';
+    alert('カメラを起動できませんでした。ブラウザの設定を確認してください。');
+  }
+}
+
+function applyOverlayPos() {
+  const vcW=videoContainer.offsetWidth;
+  const vcH=videoContainer.offsetHeight;
+  const bbW=Math.round(vcW*overlayRatio);
+  overlayBB.style.width=bbW+'px';
+  overlayBB.style.height='auto';
+
+  if(bbLeft===null) {
+    // default: left-bottom
+    overlayBB.style.left='10px';
+    overlayBB.style.bottom='10px';
+    overlayBB.style.top='auto';
+    overlayBB.style.right='auto';
+  } else {
+    const bbH=overlayBB.offsetHeight||Math.round(bbW*(255/500));
+    const cl=Math.max(4, Math.min(bbLeft, vcW-bbW-4));
+    const ct=Math.max(4, Math.min(bbTop,  vcH-bbH-4));
+    overlayBB.style.left=cl+'px';
+    overlayBB.style.top=ct+'px';
+    overlayBB.style.bottom='auto';
+    overlayBB.style.right='auto';
+  }
+}
+
 function startOverlayLoop() {
   if(animFrame) cancelAnimationFrame(animFrame);
   function loop() {
-    const vc = document.getElementById('video-container');
-    const vcW = vc.offsetWidth;
-    const vcH = vc.offsetHeight;
-    const bbW = Math.round(vcW * overlayRatio);
-    const bbH = Math.round(bbW * (320/480));
-    overlayCanvas.style.width = bbW + 'px';
-    overlayCanvas.style.height = bbH + 'px';
-    drawBlackboard(overlayCanvas);
-    animFrame = requestAnimationFrame(loop);
+    applyOverlayPos();
+    drawBlackboard(overlayBB);
+    animFrame=requestAnimationFrame(loop);
   }
   loop();
 }
 
-// Overlay size slider
-document.getElementById('overlay-size').addEventListener('input', function() {
-  overlayRatio = parseInt(this.value) / 100;
-  document.getElementById('overlay-size-label').textContent = this.value + '%';
+// Drag (pointer events — touch + mouse)
+overlayBB.addEventListener('pointerdown', e=>{
+  e.preventDefault(); isDragging=true;
+  overlayBB.setPointerCapture(e.pointerId);
+  const r=overlayBB.getBoundingClientRect();
+  dragOffX=e.clientX-r.left; dragOffY=e.clientY-r.top;
+});
+overlayBB.addEventListener('pointermove', e=>{
+  if(!isDragging) return; e.preventDefault();
+  const vcR=videoContainer.getBoundingClientRect();
+  bbLeft=e.clientX-vcR.left-dragOffX;
+  bbTop =e.clientY-vcR.top -dragOffY;
+  applyOverlayPos();
+});
+overlayBB.addEventListener('pointerup',    ()=>{ isDragging=false; });
+overlayBB.addEventListener('pointercancel',()=>{ isDragging=false; });
+
+document.getElementById('btn-start-camera').addEventListener('click', startCamera);
+btnFlip.addEventListener('click', ()=>{ facingMode=facingMode==='environment'?'user':'environment'; startCamera(); });
+
+document.getElementById('overlay-size').addEventListener('input', function(){
+  overlayRatio=parseInt(this.value)/100;
+  document.getElementById('overlay-size-label').textContent=this.value+'%';
 });
 
-// ===== Capture =====
-btnCapture.addEventListener('click', () => {
+// ===== CAPTURE =====
+btnCapture.addEventListener('click', ()=>{
   if(!stream) return;
-  const vw = video.videoWidth || 1280;
-  const vh = video.videoHeight || 720;
-  mainCanvas.width = vw;
-  mainCanvas.height = vh;
-  const ctx = mainCanvas.getContext('2d');
+  const vw=video.videoWidth||1280, vh=video.videoHeight||720;
+  mainCanvas.width=vw; mainCanvas.height=vh;
+  const ctx=mainCanvas.getContext('2d');
+  ctx.drawImage(video,0,0,vw,vh);
 
-  // Draw video frame
-  ctx.drawImage(video, 0, 0, vw, vh);
+  // Position of overlay in video coords
+  const vcR=videoContainer.getBoundingClientRect();
+  const bbR=overlayBB.getBoundingClientRect();
+  const scX=vw/vcR.width, scY=vh/vcR.height;
+  const bx=(bbR.left-vcR.left)*scX;
+  const by=(bbR.top-vcR.top)*scY;
+  const bw=bbR.width*scX;
+  const bh=bbR.height*scY;
 
-  // Draw blackboard overlay at top-left
-  const bbCanvas = document.createElement('canvas');
-  drawBlackboard(bbCanvas);
-  const bbW = Math.round(vw * overlayRatio);
-  const bbH = Math.round(bbW * (320/480));
-  const margin = Math.round(vw * 0.02);
-  ctx.drawImage(bbCanvas, margin, margin, bbW, bbH);
+  const bbC=document.createElement('canvas');
+  drawBlackboard(bbC);
+  ctx.drawImage(bbC,bx,by,bw,bh);
 
-  const dataURL = mainCanvas.toDataURL('image/jpeg', 0.92);
-  const now = new Date();
-  const pad = n => String(n).padStart(2,'0');
-  const filename = `concrete_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
-
-  photos.push({ dataURL, filename });
+  const dataURL=mainCanvas.toDataURL('image/jpeg',0.93);
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  const filename=`concrete_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
+  photos.push({dataURL, filename});
   renderGallery();
 
-  // Flash effect
-  const flash = document.createElement('div');
-  flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.8;z-index:999;pointer-events:none;transition:opacity 0.3s';
+  // Flash
+  const flash=document.createElement('div');
+  flash.style.cssText='position:fixed;inset:0;background:white;opacity:0.85;z-index:999;pointer-events:none;transition:opacity 0.25s';
   document.body.appendChild(flash);
-  setTimeout(()=>{ flash.style.opacity='0'; setTimeout(()=>flash.remove(), 350); }, 50);
+  setTimeout(()=>{ flash.style.opacity='0'; setTimeout(()=>flash.remove(),280); },40);
 });
 
-// ===== Gallery =====
+// ===== GALLERY =====
 function renderGallery() {
-  const g = document.getElementById('gallery');
-  document.getElementById('photo-count').textContent = photos.length;
-  g.innerHTML = '';
-  photos.forEach((p, i) => {
-    const item = document.createElement('div');
-    item.className = 'gallery-item';
-    item.innerHTML = `
-      <img src="${p.dataURL}" alt="photo ${i+1}">
-      <button class="del-btn" title="削除">✕</button>
-      <button class="dl-btn" title="保存">↓保存</button>
-    `;
-    item.querySelector('img').addEventListener('click', () => openModal(p));
-    item.querySelector('.del-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      photos.splice(i, 1);
-      renderGallery();
-    });
-    item.querySelector('.dl-btn').addEventListener('click', (e) => {
-      e.stopPropagation();
-      downloadPhoto(p);
-    });
+  const g=document.getElementById('gallery');
+  document.getElementById('photo-count').textContent=photos.length;
+  g.innerHTML='';
+  photos.forEach((p,i)=>{
+    const item=document.createElement('div');
+    item.className='gallery-item';
+    item.innerHTML=`<img src="${p.dataURL}" alt="photo ${i+1}"><button class="del-btn">✕</button><button class="dl-btn">↓保存</button>`;
+    item.querySelector('img').addEventListener('click',()=>openModal(p));
+    item.querySelector('.del-btn').addEventListener('click',e=>{ e.stopPropagation(); photos.splice(i,1); renderGallery(); });
+    item.querySelector('.dl-btn').addEventListener('click',e=>{ e.stopPropagation(); dlPhoto(p); });
     g.appendChild(item);
   });
 }
 
-function downloadPhoto(p) {
-  const a = document.createElement('a');
-  a.href = p.dataURL;
-  a.download = p.filename;
-  a.click();
+function dlPhoto(p) {
+  const a=document.createElement('a'); a.href=p.dataURL; a.download=p.filename; a.click();
 }
-
-// Modal
 function openModal(p) {
-  document.getElementById('modal-img').src = p.dataURL;
+  document.getElementById('modal-img').src=p.dataURL;
   document.getElementById('modal').classList.add('open');
-  document.getElementById('modal-dl').onclick = () => downloadPhoto(p);
+  document.getElementById('modal-dl').onclick=()=>dlPhoto(p);
 }
-document.getElementById('modal-close').addEventListener('click', () => {
-  document.getElementById('modal').classList.remove('open');
-});
-document.getElementById('modal').addEventListener('click', function(e) {
-  if(e.target === this) this.classList.remove('open');
-});
+document.getElementById('modal-close').addEventListener('click',()=>document.getElementById('modal').classList.remove('open'));
+document.getElementById('modal').addEventListener('click',function(e){ if(e.target===this) this.classList.remove('open'); });
 
-// Re-render overlay when any input changes
-document.querySelectorAll('.bb-input, .bb-textarea').forEach(el => {
-  el.addEventListener('input', ()=>{});
-});
-
-// Init gallery
 renderGallery();
 </script>
 </body>

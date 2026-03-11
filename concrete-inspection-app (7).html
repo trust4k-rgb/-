@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>生コン受入試験 電子黒板</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+:root {
+  --green:#1a7a3e; --green-dark:#0f5229; --green-light:#2da05a;
+  --gold:#c8a84b; --white:#f5f2e8; --border:#2a5c3a;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans JP',sans-serif;background:#12121f;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:10px 8px 40px;overflow-x:hidden;}
+
+/* ===== TABS ===== */
+.tab-nav{display:flex;width:100%;max-width:640px;margin-bottom:12px;
+  border-bottom:2px solid rgba(200,168,75,0.25);}
+.tab-btn{flex:1;background:transparent;border:none;color:rgba(255,255,255,0.4);
+  font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;padding:10px 4px;
+  cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .2s;}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+.tab-panel{display:none;width:100%;max-width:640px;}
+.tab-panel.active{display:block;}
+
+/* ===== BLACKBOARD ===== */
+.blackboard{width:100%;background:var(--green);border:3px solid var(--gold);border-radius:6px;
+  box-shadow:0 4px 24px rgba(0,0,0,.4),inset 0 0 40px rgba(0,0,0,.25);overflow:hidden;position:relative;}
+.blackboard::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 29px,rgba(0,0,0,.04) 30px),
+             repeating-linear-gradient(90deg,transparent,transparent 29px,rgba(0,0,0,.02) 30px);
+  pointer-events:none;z-index:0;}
+.blackboard-inner{position:relative;z-index:1;}
+.bb-table{width:100%;border-collapse:collapse;}
+.bb-table td{border:1px solid rgba(200,168,75,.4);padding:0;vertical-align:middle;}
+.bb-label{background:rgba(0,0,0,.28);color:var(--gold);font-size:11px;font-weight:700;
+  padding:7px 8px;white-space:nowrap;letter-spacing:.5px;width:72px;}
+.bb-input-cell{padding:3px 6px;}
+.bb-select,.bb-input{width:100%;background:transparent;border:none;
+  border-bottom:1px solid rgba(200,168,75,.45);color:var(--white);
+  font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:500;padding:5px 2px;
+  outline:none;caret-color:var(--gold);-webkit-appearance:none;appearance:none;}
+.bb-select{cursor:pointer;}
+.bb-select:focus,.bb-input:focus{border-bottom-color:var(--gold);background:rgba(255,255,255,.05);}
+.bb-input::placeholder{color:rgba(255,255,255,.28);font-size:11px;}
+.bb-select option{background:#1a4a2e;color:#fff;}
+.bb-unit{color:rgba(255,255,255,.55);font-size:10.5px;padding:0 2px 0 1px;white-space:nowrap;}
+.bb-input-with-unit{display:flex;align-items:center;}
+.results-grid{display:grid;grid-template-columns:repeat(3,1fr);}
+.result-item{border:1px solid rgba(200,168,75,.35);display:flex;flex-direction:column;
+  align-items:center;padding:5px 2px 6px;gap:2px;}
+.result-item .rlabel{color:var(--gold);font-size:9.5px;font-weight:700;text-align:center;line-height:1.2;}
+.result-item .bb-input{width:60px;text-align:center;font-size:14px;font-weight:700;
+  border-bottom-color:rgba(200,168,75,.35);}
+.result-item .bb-unit{font-size:10px;}
+.result-item .bb-input-with-unit{justify-content:center;}
+.bb-textarea{width:100%;background:transparent;border:none;border-top:1px solid rgba(200,168,75,.28);
+  color:var(--white);font-family:'Noto Sans JP',sans-serif;font-size:12px;padding:5px 8px;
+  resize:none;outline:none;caret-color:var(--gold);min-height:34px;line-height:1.6;}
+.bb-textarea::placeholder{color:rgba(255,255,255,.25);font-size:11px;}
+
+/* ===== CAMERA TAB (通常画面) ===== */
+.camera-wrap{width:100%;position:relative;margin-top:12px;}
+#video-placeholder{width:100%;aspect-ratio:16/9;background:#000;border-radius:4px;
+  border:2px solid var(--border);display:flex;align-items:center;justify-content:center;
+  color:rgba(255,255,255,.3);font-size:13px;}
+.cam-controls{display:flex;gap:8px;margin-top:10px;justify-content:center;}
+.overlay-size-row{display:flex;align-items:center;gap:8px;margin-top:8px;justify-content:flex-end;}
+.overlay-size-row label{color:rgba(255,255,255,.4);font-size:11px;}
+.overlay-size-row input[type=range]{width:88px;accent-color:var(--gold);}
+
+/* ===== FULLSCREEN CAMERA ===== */
+#cam-fs{
+  display:none;
+  position:fixed;inset:0;
+  background:#000;
+  z-index:200;
+  /* 縦持ち時: 要素自体を90度回転してスマホを横に見せる */
+  width:100vw; height:100vh;
+}
+#cam-fs.open{ display:block; }
+
+/* 縦持ち時だけ回転 */
+@media (orientation:portrait){
+  #cam-fs.open{
+    width:100vh;
+    height:100vw;
+    position:fixed;
+    top:0; left:0;
+    transform-origin:top left;
+    transform:rotate(90deg) translateY(-100%);
+  }
+}
+
+#cam-fs video{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+}
+
+/* 黒板オーバーレイ */
+#cam-bb{
+  position:absolute;
+  bottom:80px; left:12px;
+  z-index:10;
+  filter:drop-shadow(0 2px 10px rgba(0,0,0,.85));
+  touch-action:none;
+  user-select:none;-webkit-user-select:none;
+  cursor:grab;
+}
+#cam-bb:active{cursor:grabbing;}
+
+/* カメラ内ボタン共通 */
+.cam-btn{
+  position:absolute;
+  border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  z-index:20;
+}
+/* シャッター: 右下 */
+#btn-shutter{
+  bottom:16px;right:16px;
+  width:72px;height:72px;border-radius:50%;
+  background:var(--gold);border:4px solid #fff;
+  box-shadow:0 2px 16px rgba(0,0,0,.6);
+  font-size:32px;
+  transition:transform .1s;
+}
+#btn-shutter:active{transform:scale(.88);}
+/* カメラ切替: 左上 */
+#btn-cam-flip{
+  top:14px;left:14px;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.4);
+  font-size:22px;color:#fff;
+}
+/* 閉じる: 右上 */
+#btn-cam-close{
+  top:14px;right:14px;
+  width:46px;height:46px;border-radius:50%;
+  background:rgba(0,0,0,.5);border:2px solid rgba(255,255,255,.35);
+  font-size:20px;color:#fff;
+}
+/* 黒板サイズ: 下中央 */
+#cam-size-wrap{
+  position:absolute;bottom:28px;left:50%;transform:translateX(-50%);
+  display:flex;align-items:center;gap:6px;z-index:20;
+}
+#cam-size-wrap label{color:rgba(255,255,255,.5);font-size:10px;white-space:nowrap;}
+#cam-size-wrap input[type=range]{width:90px;accent-color:var(--gold);}
+
+/* ===== BUTTONS ===== */
+.btn{font-family:'Noto Sans JP',sans-serif;font-weight:700;font-size:13px;
+  border:none;border-radius:4px;padding:11px 18px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:5px;transition:all .15s;}
+.btn:active{transform:scale(.96);}
+.btn-primary{background:var(--green-light);color:#fff;}
+.btn-secondary{background:rgba(255,255,255,.1);color:var(--white);border:1px solid rgba(255,255,255,.15);}
+.btn-sm{font-size:11px;padding:7px 12px;}
+#canvas{display:none;}
+
+/* ===== GALLERY ===== */
+.gallery-title{color:var(--gold);font-size:12px;font-weight:700;letter-spacing:1px;
+  margin:16px 0 8px;border-bottom:1px solid rgba(200,168,75,.2);padding-bottom:6px;}
+.gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;}
+.gallery-item{position:relative;border-radius:3px;overflow:hidden;
+  border:1px solid var(--border);aspect-ratio:16/9;cursor:pointer;}
+.gallery-item img{width:100%;height:100%;object-fit:cover;display:block;}
+.gallery-item .del-btn{position:absolute;top:3px;right:3px;background:rgba(160,30,30,.85);
+  color:#fff;border:none;border-radius:50%;width:20px;height:20px;font-size:11px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.gallery-item .dl-btn{position:absolute;bottom:3px;right:3px;background:rgba(0,0,0,.72);
+  color:var(--gold);border:none;border-radius:3px;padding:2px 5px;font-size:10px;
+  cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+
+/* ===== MASTER ===== */
+.master-section{margin-bottom:22px;}
+.master-title{color:var(--gold);font-size:12px;font-weight:700;letter-spacing:1px;margin-bottom:8px;}
+.master-list{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.master-item{display:flex;align-items:center;justify-content:space-between;
+  background:rgba(255,255,255,.06);border:1px solid rgba(200,168,75,.18);
+  border-radius:4px;padding:8px 12px;color:var(--white);font-size:13px;}
+.master-item button{background:rgba(160,30,30,.7);color:#fff;border:none;border-radius:3px;
+  padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap;}
+.master-add-row{display:flex;gap:8px;}
+.master-add-input{flex:1;background:rgba(255,255,255,.07);border:1px solid rgba(200,168,75,.3);
+  border-radius:4px;color:var(--white);font-family:'Noto Sans JP',sans-serif;
+  font-size:13px;padding:8px 10px;outline:none;caret-color:var(--gold);}
+.master-add-input:focus{border-color:var(--gold);}
+.master-add-input::placeholder{color:rgba(255,255,255,.28);}
+.section-div{border:none;border-top:1px solid rgba(200,168,75,.12);margin:14px 0;}
+
+/* ===== MODAL (写真プレビュー) ===== */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.93);z-index:500;
+  align-items:center;justify-content:center;padding:16px;flex-direction:column;gap:12px;}
+.modal.open{display:flex;}
+.modal img{max-width:100%;max-height:75vh;border-radius:4px;}
+.modal-actions{display:flex;gap:10px;}
+</style>
+</head>
+<body>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="camera">📷 カメラ</button>
+  <button class="tab-btn" data-tab="blackboard">📋 黒板編集</button>
+  <button class="tab-btn" data-tab="master">⚙ マスター</button>
+</nav>
+
+<!-- CAMERA TAB -->
+<div class="tab-panel active" id="tab-camera">
+  <div class="camera-wrap">
+    <div id="video-placeholder">📷 カメラ起動ボタンを押してください</div>
+    <div class="overlay-size-row">
+      <label>黒板サイズ:</label>
+      <input type="range" id="overlay-size" min="20" max="65" value="38">
+      <label id="overlay-size-lbl">38%</label>
+    </div>
+    <div class="cam-controls">
+      <button class="btn btn-secondary" id="btn-start-camera">📷 カメラ起動</button>
+    </div>
+  </div>
+  <div class="gallery-title">📁 撮影済み写真（<span id="photo-count">0</span>枚）</div>
+  <div class="gallery-grid" id="gallery"></div>
+</div>
+
+<!-- BLACKBOARD TAB -->
+<div class="tab-panel" id="tab-blackboard">
+  <div class="blackboard">
+    <div class="blackboard-inner">
+      <table class="bb-table">
+        <tr>
+          <td class="bb-label">工 事 名</td>
+          <td class="bb-input-cell">
+            <select class="bb-select" id="f-koujimei"><option value="">── 選択 ──</option></select>
+          </td>
+        </tr>
+        <tr>
+          <td class="bb-label">打設箇所</td>
+          <td class="bb-input-cell">
+            <select class="bb-select" id="f-kakou"><option value="">── 選択 ──</option></select>
+          </td>
+        </tr>
+        <tr>
+          <td class="bb-label">配　　合</td>
+          <td class="bb-input-cell">
+            <select class="bb-select" id="f-haigo"><option value="">── 選択 ──</option></select>
+          </td>
+        </tr>
+        <tr>
+          <td class="bb-label">試 験 日</td>
+          <td class="bb-input-cell">
+            <input class="bb-input" id="f-date" type="date">
+          </td>
+        </tr>
+      </table>
+      <div class="results-grid">
+        <div class="result-item">
+          <div class="rlabel">スランプ</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-slump" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">cm</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">空 気 量</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-kuuki" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">%</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">塩 化 物</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-ensika" placeholder="0.000" inputmode="decimal" style="width:50px;font-size:12px">
+            <span class="bb-unit">kg/m³</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">外 気 温</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-gaikion" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">°C</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">ｺﾝｸﾘｰﾄ温度</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-con-temp" placeholder="0.0" inputmode="decimal">
+            <span class="bb-unit">°C</span>
+          </div>
+        </div>
+        <div class="result-item">
+          <div class="rlabel">立 会 人</div>
+          <div class="bb-input-with-unit">
+            <input class="bb-input" id="r-tachiai" placeholder="氏名" style="width:56px;font-size:12px">
+            <span class="bb-unit">氏</span>
+          </div>
+        </div>
+      </div>
+      <textarea class="bb-textarea" id="f-biko" rows="2" placeholder="備考（単位水量・テストピース採取数 など）"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- MASTER TAB -->
+<div class="tab-panel" id="tab-master">
+  <div class="master-section">
+    <div class="master-title">🏗 工事名</div>
+    <div class="master-list" id="list-koujimei"></div>
+    <div class="master-add-row">
+      <input class="master-add-input" id="add-koujimei" placeholder="工事名を入力">
+      <button class="btn btn-primary btn-sm" onclick="addMaster('koujimei')">＋ 追加</button>
+    </div>
+  </div>
+  <hr class="section-div">
+  <div class="master-section">
+    <div class="master-title">📍 打設箇所</div>
+    <div class="master-list" id="list-kakou"></div>
+    <div class="master-add-row">
+      <input class="master-add-input" id="add-kakou" placeholder="打設箇所を入力">
+      <button class="btn btn-primary btn-sm" onclick="addMaster('kakou')">＋ 追加</button>
+    </div>
+  </div>
+  <hr class="section-div">
+  <div class="master-section">
+    <div class="master-title">⚗ 配合</div>
+    <div class="master-list" id="list-haigo"></div>
+    <div class="master-add-row">
+      <input class="master-add-input" id="add-haigo" placeholder="配合番号を入力">
+      <button class="btn btn-primary btn-sm" onclick="addMaster('haigo')">＋ 追加</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULLSCREEN CAMERA OVERLAY -->
+<div id="cam-fs">
+  <video id="cam-video" autoplay playsinline muted></video>
+  <canvas id="cam-bb"></canvas>
+  <button class="cam-btn" id="btn-shutter">📸</button>
+  <button class="cam-btn" id="btn-cam-flip">🔄</button>
+  <button class="cam-btn" id="btn-cam-close">✕</button>
+  <div id="cam-size-wrap">
+    <label>黒板:</label>
+    <input type="range" id="cam-size" min="15" max="60" value="38">
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<!-- 写真プレビューモーダル -->
+<div class="modal" id="modal">
+  <img id="modal-img" src="" alt="">
+  <div class="modal-actions">
+    <button class="btn btn-primary" id="modal-dl">⬇ 保存</button>
+    <button class="btn btn-secondary" id="modal-close">✕ 閉じる</button>
+  </div>
+</div>
+
+<script>
+// ===== MASTER =====
+const MASTER_KEYS = ['koujimei','kakou','haigo'];
+function loadMaster(k){ try{return JSON.parse(localStorage.getItem('master_'+k)||'[]');}catch(e){return[];} }
+function saveMaster(k,a){ localStorage.setItem('master_'+k,JSON.stringify(a)); }
+function renderMasterList(k){
+  const arr=loadMaster(k);
+  const list=document.getElementById('list-'+k);
+  list.innerHTML = arr.length===0
+    ? '<div style="color:rgba(255,255,255,.28);font-size:12px;padding:4px 0">まだ登録がありません</div>'
+    : '';
+  arr.forEach((item,i)=>{
+    const d=document.createElement('div');
+    d.className='master-item';
+    d.innerHTML=`<span>${item}</span><button onclick="deleteMaster('${k}',${i})">削除</button>`;
+    list.appendChild(d);
+  });
+  refreshSelect(k);
+}
+function addMaster(k){
+  const inp=document.getElementById('add-'+k);
+  const v=inp.value.trim(); if(!v)return;
+  const a=loadMaster(k);
+  if(!a.includes(v)){a.push(v);saveMaster(k,a);}
+  inp.value=''; renderMasterList(k);
+}
+function deleteMaster(k,i){
+  const a=loadMaster(k); a.splice(i,1); saveMaster(k,a); renderMasterList(k);
+}
+function refreshSelect(k){
+  const arr=loadMaster(k);
+  const sid={koujimei:'f-koujimei',kakou:'f-kakou',haigo:'f-haigo'}[k];
+  const sel=document.getElementById(sid);
+  const cur=sel.value;
+  sel.innerHTML='<option value="">── 選択 ──</option>';
+  arr.forEach(item=>{ const o=document.createElement('option'); o.value=item; o.textContent=item; sel.appendChild(o); });
+  if(arr.includes(cur)) sel.value=cur;
+}
+MASTER_KEYS.forEach(k=>{
+  document.getElementById('add-'+k).addEventListener('keydown',e=>{ if(e.key==='Enter')addMaster(k); });
+});
+MASTER_KEYS.forEach(renderMasterList);
+
+// ===== TABS =====
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+// ===== DATE =====
+document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+// ===== DRAW BLACKBOARD =====
+function getVal(id){ const el=document.getElementById(id); return el?el.value||'':'';}
+
+function drawBlackboard(cvs){
+  const W=500,H=255;
+  cvs.width=W; cvs.height=H;
+  const ctx=cvs.getContext('2d');
+  ctx.fillStyle='#1a7a3e'; ctx.fillRect(0,0,W,H);
+  for(let y=0;y<H;y+=30){
+    ctx.strokeStyle='rgba(0,0,0,.04)';ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+  }
+  ctx.strokeStyle='#c8a84b';ctx.lineWidth=3;ctx.strokeRect(1.5,1.5,W-3,H-3);
+  const LW=70,rH=26;
+  function bdr(x,y,w,h){ctx.strokeStyle='rgba(200,168,75,.4)';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);}
+  function lbg(x,y,w,h){ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x,y,w,h);}
+  function gold(t,x,y,s=10){ctx.fillStyle='#c8a84b';ctx.font=`bold ${s}px "Noto Sans JP",sans-serif`;ctx.textAlign='left';ctx.fillText(t,x,y);}
+  function wht(t,x,y,s=11,a='left'){ctx.fillStyle='#f5f2e8';ctx.font=`${s}px "Noto Sans JP",sans-serif`;ctx.textAlign=a;ctx.fillText(t,x,y);}
+  function bwht(t,x,y,s=12,a='center'){ctx.fillStyle='#f5f2e8';ctx.font=`bold ${s}px "Noto Sans JP",sans-serif`;ctx.textAlign=a;ctx.fillText(t,x,y);}
+  const rows=[
+    ['工 事 名',getVal('f-koujimei')],
+    ['打設箇所',getVal('f-kakou')],
+    ['配　　合',getVal('f-haigo')],
+    ['試 験 日',(()=>{const d=getVal('f-date');return d?d.replace(/-/g,'/'):'';})()] ,
+  ];
+  rows.forEach(([lbl,v],i)=>{
+    const y=3+i*rH;
+    bdr(3,y,W-6,rH);lbg(3,y,LW,rH);
+    gold(lbl,7,y+rH/2+4);wht(v.substring(0,26),LW+6,y+rH/2+4,11);
+  });
+  const resY=3+rows.length*rH, cW=(W-6)/3, resH=34;
+  const results=[
+    ['スランプ',getVal('r-slump'),'cm'],
+    ['空 気 量',getVal('r-kuuki'),'%'],
+    ['塩 化 物',getVal('r-ensika'),'kg/m³'],
+    ['外 気 温',getVal('r-gaikion'),'°C'],
+    ['ｺﾝｸﾘｰﾄ温度',getVal('r-con-temp'),'°C'],
+    ['立 会 人',getVal('r-tachiai'),'氏'],
+  ];
+  results.forEach(([lbl,v,unit],i)=>{
+    const col=i%3,row2=Math.floor(i/3);
+    const x=3+col*cW,y=resY+row2*resH;
+    bdr(x,y,cW,resH);lbg(x,y,cW,13);
+    ctx.fillStyle='#c8a84b';ctx.font='bold 9px "Noto Sans JP",sans-serif';ctx.textAlign='center';
+    ctx.fillText(lbl,x+cW/2,y+11);
+    bwht(v?v+' '+unit:'—',x+cW/2,y+resH-7,12,'center');
+  });
+  const bikoY=resY+2*resH,bikoH=H-bikoY-3;
+  bdr(3,bikoY,W-6,bikoH);lbg(3,bikoY,LW,bikoH);
+  gold('備　考',7,bikoY+bikoH/2+4);
+  getVal('f-biko').split('\n').slice(0,2).forEach((line,li)=>wht(line.substring(0,30),LW+6,bikoY+13+li*13,10));
+}
+
+// ===== CAMERA =====
+let stream=null, facingMode='environment', overlayRatio=0.38;
+let animFrame=null, photos=[];
+let isDragging=false, dragOffX=0, dragOffY=0;
+let bbX=null, bbY=null; // 黒板位置（cam-fs座標系）
+
+const camFs    = document.getElementById('cam-fs');
+const camVideo = document.getElementById('cam-video');
+const camBB    = document.getElementById('cam-bb');
+const mainCanvas = document.getElementById('canvas');
+
+// cam-fsの実際のレンダリングサイズを取得
+// 縦持ち時: CSS rotate で width=100vh,height=100vw になっているが
+// getBoundingClientRect は回転後の見た目サイズを返す
+function getCamSize(){
+  // 回転後の見た目サイズ
+  const r = camFs.getBoundingClientRect();
+  return { w: r.width, h: r.height };
+}
+
+function applyBBPos(){
+  const {w,h} = getCamSize();
+  const bbW = Math.round(w * overlayRatio);
+  camBB.style.width  = bbW+'px';
+  camBB.style.height = 'auto';
+  if(bbX===null){
+    camBB.style.left   = '12px';
+    camBB.style.bottom = '80px';
+    camBB.style.top    = 'auto';
+    camBB.style.right  = 'auto';
+  } else {
+    const bbH = camBB.offsetHeight || Math.round(bbW*(255/500));
+    camBB.style.left   = Math.max(4,Math.min(bbX,w-bbW-4))+'px';
+    camBB.style.top    = Math.max(4,Math.min(bbY,h-bbH-4))+'px';
+    camBB.style.bottom = 'auto';
+    camBB.style.right  = 'auto';
+  }
+}
+
+function startLoop(){
+  if(animFrame) cancelAnimationFrame(animFrame);
+  (function loop(){ applyBBPos(); drawBlackboard(camBB); animFrame=requestAnimationFrame(loop); })();
+}
+
+async function startCamera(){
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  try{
+    // 横向き（landscape）を明示的に要求
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode, width:{ideal:1920}, height:{ideal:1080},
+              aspectRatio:{ideal:16/9} },
+      audio:false
+    });
+    camVideo.srcObject = stream;
+    camFs.classList.add('open');
+    // フルスクリーンAPIを試みる
+    if(camFs.requestFullscreen) camFs.requestFullscreen().catch(()=>{});
+    else if(camFs.webkitRequestFullscreen) camFs.webkitRequestFullscreen();
+    bbX=null; bbY=null;
+    startLoop();
+  } catch(e){
+    alert('カメラを起動できませんでした。ブラウザの設定を確認してください。');
+  }
+}
+
+function closeCamera(){
+  if(animFrame){cancelAnimationFrame(animFrame);animFrame=null;}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  camFs.classList.remove('open');
+  if(document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+  else if(document.webkitFullscreenElement) document.webkitExitFullscreen();
+  bbX=null; bbY=null;
+}
+
+// ドラッグ — cam-fsのBoundingClientRectを使って正しい座標に変換
+camBB.addEventListener('pointerdown',e=>{
+  e.preventDefault(); isDragging=true;
+  camBB.setPointerCapture(e.pointerId);
+  const r=camBB.getBoundingClientRect();
+  dragOffX=e.clientX-r.left;
+  dragOffY=e.clientY-r.top;
+});
+camBB.addEventListener('pointermove',e=>{
+  if(!isDragging) return; e.preventDefault();
+  const fsR=camFs.getBoundingClientRect();
+  // getBoundingClientRect は回転後の画面座標を返すので直接使える
+  bbX = e.clientX - fsR.left - dragOffX;
+  bbY = e.clientY - fsR.top  - dragOffY;
+  applyBBPos();
+});
+camBB.addEventListener('pointerup',  ()=>{isDragging=false;});
+camBB.addEventListener('pointercancel',()=>{isDragging=false;});
+
+// ===== CAPTURE =====
+function doCapture(){
+  if(!stream) return;
+
+  const vw = camVideo.videoWidth  || 1280;
+  const vh = camVideo.videoHeight || 720;
+  const fsR = camFs.getBoundingClientRect(); // 回転後の見た目サイズ
+  const bbR = camBB.getBoundingClientRect();
+
+  // 表示が横長なのに映像が縦長 → 90度回転して合成
+  const dispLandscape = fsR.width > fsR.height;
+  const vidPortrait   = vw < vh;
+
+  if(dispLandscape && vidPortrait){
+    // canvas = 横長 (vh×vw)
+    mainCanvas.width  = vh;
+    mainCanvas.height = vw;
+    const ctx = mainCanvas.getContext('2d');
+    ctx.save();
+    ctx.translate(vh/2, vw/2);
+    ctx.rotate(Math.PI/2);
+    ctx.drawImage(camVideo, -vw/2, -vh/2, vw, vh);
+    ctx.restore();
+    // 黒板位置: fsR(回転後表示)→canvas(vh×vw)へ変換
+    const scX = vh / fsR.width;
+    const scY = vw / fsR.height;
+    const bx=(bbR.left-fsR.left)*scX;
+    const by=(bbR.top -fsR.top )*scY;
+    const bw=bbR.width*scX;
+    const bh=bbR.height*scY;
+    const tmp=document.createElement('canvas'); drawBlackboard(tmp);
+    ctx.drawImage(tmp,bx,by,bw,bh);
+  } else {
+    mainCanvas.width  = vw;
+    mainCanvas.height = vh;
+    const ctx = mainCanvas.getContext('2d');
+    ctx.drawImage(camVideo,0,0,vw,vh);
+    const scX = vw / fsR.width;
+    const scY = vh / fsR.height;
+    const bx=(bbR.left-fsR.left)*scX;
+    const by=(bbR.top -fsR.top )*scY;
+    const bw=bbR.width*scX;
+    const bh=bbR.height*scY;
+    const tmp=document.createElement('canvas'); drawBlackboard(tmp);
+    ctx.drawImage(tmp,bx,by,bw,bh);
+  }
+
+  const dataURL = mainCanvas.toDataURL('image/jpeg',0.93);
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  const filename=`concrete_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
+  photos.push({dataURL,filename});
+  renderGallery();
+
+  // フラッシュ
+  const flash=document.createElement('div');
+  flash.style.cssText='position:fixed;inset:0;background:#fff;opacity:.85;z-index:9999;pointer-events:none;transition:opacity .2s';
+  document.body.appendChild(flash);
+  setTimeout(()=>{flash.style.opacity='0';setTimeout(()=>flash.remove(),250);},40);
+
+  // カメラを閉じて写真確認
+  closeCamera();
+  setTimeout(()=>openModal({dataURL,filename}), 300);
+}
+
+// ボタン
+document.getElementById('btn-start-camera').addEventListener('click',startCamera);
+document.getElementById('btn-shutter').addEventListener('click',doCapture);
+document.getElementById('btn-cam-flip').addEventListener('click',()=>{
+  facingMode = facingMode==='environment'?'user':'environment'; startCamera();
+});
+document.getElementById('btn-cam-close').addEventListener('click',closeCamera);
+document.getElementById('cam-size').addEventListener('input',function(){
+  overlayRatio=parseInt(this.value)/100;
+});
+document.getElementById('overlay-size').addEventListener('input',function(){
+  overlayRatio=parseInt(this.value)/100;
+  document.getElementById('overlay-size-lbl').textContent=this.value+'%';
+  document.getElementById('cam-size').value=this.value;
+});
+
+// ===== GALLERY =====
+function renderGallery(){
+  const g=document.getElementById('gallery');
+  document.getElementById('photo-count').textContent=photos.length;
+  g.innerHTML='';
+  photos.forEach((p,i)=>{
+    const item=document.createElement('div');
+    item.className='gallery-item';
+    item.innerHTML=`<img src="${p.dataURL}" alt="photo ${i+1}"><button class="del-btn">✕</button><button class="dl-btn">↓保存</button>`;
+    item.querySelector('img').addEventListener('click',()=>openModal(p));
+    item.querySelector('.del-btn').addEventListener('click',e=>{e.stopPropagation();photos.splice(i,1);renderGallery();});
+    item.querySelector('.dl-btn').addEventListener('click',e=>{e.stopPropagation();dlPhoto(p);});
+    g.appendChild(item);
+  });
+}
+function dlPhoto(p){ const a=document.createElement('a');a.href=p.dataURL;a.download=p.filename;a.click(); }
+function openModal(p){
+  document.getElementById('modal-img').src=p.dataURL;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-dl').onclick=()=>dlPhoto(p);
+}
+document.getElementById('modal-close').addEventListener('click',()=>document.getElementById('modal').classList.remove('open'));
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('open');});
+
+renderGallery();
+</script>
+</body>
+</html>

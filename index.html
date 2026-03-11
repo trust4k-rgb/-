@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>生コン受入試験 電子黒板</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --green: #1a7a3e;
+    --green-dark: #0f5229;
+    --green-light: #2da05a;
+    --gold: #c8a84b;
+    --white: #f5f2e8;
+    --text: #1a1a1a;
+    --border: #2a5c3a;
+    --input-bg: rgba(255,255,255,0.92);
+    --shadow: 0 4px 24px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: #1a1a2e;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 8px 24px;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 30%, rgba(26,122,62,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 70%, rgba(200,168,75,0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  h1.app-title {
+    color: var(--gold);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    opacity: 0.8;
+  }
+
+  /* ====== BLACKBOARD ====== */
+  .blackboard {
+    width: 100%;
+    max-width: 520px;
+    background: var(--green);
+    border: 3px solid var(--gold);
+    border-radius: 6px;
+    box-shadow: var(--shadow), inset 0 0 40px rgba(0,0,0,0.3);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .blackboard::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      repeating-linear-gradient(0deg, transparent, transparent 29px, rgba(0,0,0,0.05) 30px),
+      repeating-linear-gradient(90deg, transparent, transparent 29px, rgba(0,0,0,0.03) 30px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .blackboard-inner {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Title row */
+  .bb-title {
+    background: var(--green-dark);
+    border-bottom: 2px solid var(--gold);
+    padding: 8px 12px;
+    text-align: center;
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 2px;
+  }
+
+  /* Table inside blackboard */
+  .bb-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .bb-table td, .bb-table th {
+    border: 1px solid rgba(200,168,75,0.5);
+    padding: 0;
+    vertical-align: middle;
+  }
+
+  .bb-label {
+    background: rgba(0,0,0,0.25);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 8px;
+    white-space: nowrap;
+    min-width: 72px;
+    letter-spacing: 0.5px;
+  }
+
+  .bb-input-cell {
+    padding: 4px 6px;
+    background: transparent;
+  }
+
+  .bb-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(200,168,75,0.6);
+    color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 4px 2px;
+    outline: none;
+    text-align: center;
+    caret-color: var(--gold);
+    transition: border-color 0.2s;
+  }
+
+  .bb-input:focus {
+    border-bottom-color: var(--gold);
+    background: rgba(255,255,255,0.06);
+  }
+
+  .bb-input::placeholder {
+    color: rgba(255,255,255,0.35);
+    font-size: 11px;
+  }
+
+  .bb-unit {
+    color: rgba(255,255,255,0.6);
+    font-size: 11px;
+    padding: 0 4px 0 2px;
+    white-space: nowrap;
+  }
+
+  .bb-input-with-unit {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Section headers */
+  .bb-section-header {
+    background: rgba(0,0,0,0.35);
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    padding: 5px;
+    letter-spacing: 2px;
+    border-top: 1px solid rgba(200,168,75,0.4);
+    border-bottom: 1px solid rgba(200,168,75,0.4);
+  }
+
+  /* Results grid — 2 col */
+  .results-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+
+  .result-item {
+    border: 1px solid rgba(200,168,75,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 6px 4px;
+    gap: 2px;
+  }
+
+  .result-item .bb-label {
+    background: transparent;
+    text-align: center;
+    font-size: 10px;
+    padding: 0;
+    min-width: unset;
+  }
+
+  .result-item .bb-input-with-unit {
+    justify-content: center;
+  }
+
+  .result-item .bb-input {
+    width: 70px;
+    text-align: center;
+  }
+
+  /* Remarks */
+  .bb-textarea {
+    width: 100%;
+    background: transparent;
+    border: 1px solid rgba(200,168,75,0.4);
+    color: var(--white);
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 12px;
+    padding: 6px 8px;
+    resize: none;
+    outline: none;
+    caret-color: var(--gold);
+    min-height: 52px;
+    line-height: 1.6;
+  }
+
+  .bb-textarea:focus { border-color: var(--gold); }
+  .bb-textarea::placeholder { color: rgba(255,255,255,0.3); font-size: 11px; }
+
+  /* Timestamp */
+  .bb-timestamp {
+    text-align: right;
+    padding: 4px 10px 6px;
+    color: rgba(200,168,75,0.7);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  /* ====== CAMERA SECTION ====== */
+  .camera-section {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 14px;
+    position: relative;
+  }
+
+  #video-container {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #000;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    border: 2px solid var(--border);
+  }
+
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Overlay of blackboard on video */
+  #overlay-bb {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 52%;
+    max-width: 240px;
+    pointer-events: none;
+    z-index: 10;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7));
+    transform-origin: top left;
+  }
+
+  .camera-controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .btn {
+    font-family: 'Noto Sans JP', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    border-radius: 4px;
+    padding: 12px 20px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-primary {
+    background: var(--green-light);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26,122,62,0.4);
+  }
+  .btn-primary:active { background: var(--green-dark); transform: scale(0.97); }
+
+  .btn-capture {
+    background: var(--gold);
+    color: #1a1a1a;
+    font-size: 15px;
+    padding: 14px 28px;
+    box-shadow: 0 2px 12px rgba(200,168,75,0.4);
+  }
+  .btn-capture:active { background: #a88a38; transform: scale(0.97); }
+
+  .btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: var(--white);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .btn-secondary:active { background: rgba(255,255,255,0.2); }
+
+  .btn-danger {
+    background: rgba(180,40,40,0.7);
+    color: #fff;
+  }
+
+  /* Canvas (hidden) */
+  #canvas { display: none; }
+
+  /* ====== GALLERY ====== */
+  .gallery-section {
+    width: 100%;
+    max-width: 520px;
+    margin-top: 20px;
+  }
+
+  .gallery-title {
+    color: var(--gold);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(200,168,75,0.3);
+    padding-bottom: 6px;
+  }
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+  }
+
+  .gallery-item {
+    position: relative;
+    border-radius: 3px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    aspect-ratio: 4/3;
+  }
+
+  .gallery-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gallery-item .del-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background: rgba(180,40,40,0.85);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .gallery-item .dl-btn {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: rgba(0,0,0,0.7);
+    color: var(--gold);
+    border: none;
+    border-radius: 3px;
+    padding: 2px 6px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'Noto Sans JP', sans-serif;
+  }
+
+  /* No camera message */
+  .no-camera {
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 30px;
+    font-size: 13px;
+    line-height: 1.8;
+  }
+
+  /* Preview modal */
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .modal.open { display: flex; flex-direction: column; gap: 12px; }
+  .modal img { max-width: 100%; max-height: 75vh; border-radius: 4px; }
+  .modal-actions { display: flex; gap: 10px; }
+
+  select.bb-input {
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+
+  .row-flex {
+    display: flex;
+    align-items: center;
+  }
+
+  /* Mobile overlay size toggle */
+  .overlay-size-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+    padding-right: 4px;
+  }
+  .overlay-size-row label {
+    color: rgba(255,255,255,0.5);
+    font-size: 11px;
+  }
+  .overlay-size-row input[type=range] {
+    width: 100px;
+    accent-color: var(--gold);
+  }
+</style>
+</head>
+<body>
+
+<h1 class="app-title">🏗 生コン受入試験 電子黒板</h1>
+
+<!-- ===== BLACKBOARD ===== -->
+<div class="blackboard" id="blackboard">
+  <div class="blackboard-inner">
+    <div class="bb-title">コンクリート品質管理試験</div>
+    <table class="bb-table">
+      <tr>
+        <td class="bb-label">工事名</td>
+        <td class="bb-input-cell" colspan="3">
+          <input class="bb-input" id="f-koujimei" placeholder="工事名を入力" style="text-align:left;font-size:12px;">
+        </td>
+      </tr>
+      <tr>
+        <td class="bb-label">打設箇所</td>
+        <td class="bb-input-cell">
+          <input class="bb-input" id="f-kakou" placeholder="部位">
+        </td>
+        <td class="bb-label" style="text-align:center">配合</td>
+        <td class="bb-input-cell">
+          <input class="bb-input" id="f-haigoban" placeholder="配合番号">
+        </td>
+      </tr>
+      <tr>
+        <td class="bb-label">試験日</td>
+        <td class="bb-input-cell">
+          <input class="bb-input" id="f-date" type="date">
+        </td>
+        <td class="bb-label" style="text-align:center">回数</td>
+        <td class="bb-input-cell">
+          <input class="bb-input" id="f-kaisu" placeholder="1台目">
+        </td>
+      </tr>
+    </table>
+
+    <div class="bb-section-header">― 試 験 結 果 ―</div>
+
+    <div class="results-grid">
+      <div class="result-item">
+        <div class="bb-label">スランプ</div>
+        <div class="bb-input-with-unit">
+          <input class="bb-input" id="r-slump" placeholder="0.0" style="width:55px">
+          <span class="bb-unit">cm</span>
+        </div>
+      </div>
+      <div class="result-item">
+        <div class="bb-label">外気温</div>
+        <div class="bb-input-with-unit">
+          <input class="bb-input" id="r-gaikion" placeholder="0.0" style="width:55px">
+          <span class="bb-unit">°C</span>
+        </div>
+      </div>
+      <div class="result-item">
+        <div class="bb-label">空気量</div>
+        <div class="bb-input-with-unit">
+          <input class="bb-input" id="r-kuuki" placeholder="0.0" style="width:55px">
+          <span class="bb-unit">%</span>
+        </div>
+      </div>
+      <div class="result-item">
+        <div class="bb-label">塩化物量</div>
+        <div class="bb-input-with-unit">
+          <input class="bb-input" id="r-ensika" placeholder="0.000" style="width:55px">
+          <span class="bb-unit">kg/m³</span>
+        </div>
+      </div>
+      <div class="result-item" style="grid-column: 1/-1;">
+        <div class="bb-label">コンクリート温度</div>
+        <div class="bb-input-with-unit">
+          <input class="bb-input" id="r-con-temp" placeholder="0.0" style="width:70px">
+          <span class="bb-unit">°C</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="bb-section-header" style="font-size:10px;letter-spacing:1px;">備　考</div>
+    <textarea class="bb-textarea" id="f-biko" placeholder="単位水量・テストピース採取数・立会者 など"></textarea>
+
+    <div class="bb-timestamp" id="bb-timestamp">-- : -- : --</div>
+  </div>
+</div>
+
+<!-- ===== CAMERA ===== -->
+<div class="camera-section">
+  <div id="video-container">
+    <video id="video" autoplay playsinline muted></video>
+    <!-- Overlay canvas (blackboard image on video) -->
+    <canvas id="overlay-bb" style="display:none"></canvas>
+    <div class="no-camera" id="no-camera" style="display:none">
+      📷 カメラが利用できません<br>
+      <small>ブラウザの設定でカメラを許可してください</small>
+    </div>
+  </div>
+
+  <div class="overlay-size-row">
+    <label>黒板サイズ:</label>
+    <input type="range" id="overlay-size" min="30" max="70" value="50">
+    <label id="overlay-size-label">50%</label>
+  </div>
+
+  <div class="camera-controls">
+    <button class="btn btn-secondary" id="btn-start-camera">📷 カメラ起動</button>
+    <button class="btn btn-capture" id="btn-capture" disabled>⚡ 撮影</button>
+    <button class="btn btn-secondary" id="btn-flip" style="display:none">🔄 カメラ切替</button>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<!-- ===== GALLERY ===== -->
+<div class="gallery-section">
+  <div class="gallery-title">📁 撮影済み写真 (<span id="photo-count">0</span>枚)</div>
+  <div class="gallery-grid" id="gallery"></div>
+</div>
+
+<!-- Preview Modal -->
+<div class="modal" id="modal">
+  <img id="modal-img" src="" alt="">
+  <div class="modal-actions">
+    <button class="btn btn-primary" id="modal-dl">⬇ 保存</button>
+    <button class="btn btn-secondary" id="modal-close">✕ 閉じる</button>
+  </div>
+</div>
+
+<script>
+// ===== State =====
+let stream = null;
+let facingMode = 'environment';
+let photos = []; // { dataURL, filename }
+let overlayRatio = 0.50;
+let animFrame = null;
+
+// ===== Timestamp =====
+function updateTimestamp() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  document.getElementById('bb-timestamp').textContent =
+    `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())}  ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
+setInterval(updateTimestamp, 1000);
+updateTimestamp();
+
+// Set today's date
+document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+
+// ===== Draw blackboard to offscreen canvas =====
+function drawBlackboard(targetCanvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = 480, H = 320;
+  targetCanvas.width = W;
+  targetCanvas.height = H;
+  const ctx = targetCanvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#1a7a3e';
+  ctx.fillRect(0, 0, W, H);
+
+  // Texture
+  for(let y=0;y<H;y+=30){ ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  // Border
+  ctx.strokeStyle = '#c8a84b';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(1.5, 1.5, W-3, H-3);
+
+  // Title bar
+  ctx.fillStyle = '#0f5229';
+  ctx.fillRect(3, 3, W-6, 32);
+  ctx.strokeStyle = '#c8a84b';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(3, 35, W-6, 1);
+
+  ctx.fillStyle = '#f5f2e8';
+  ctx.font = 'bold 16px "Noto Sans JP", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('コンクリート品質管理試験', W/2, 24);
+
+  // Helper: draw table row
+  function row(y, h, label, value, labelW=90) {
+    ctx.strokeStyle = 'rgba(200,168,75,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(3, y, W-6, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(3, y, labelW, h);
+    ctx.fillStyle = '#c8a84b';
+    ctx.font = 'bold 11px "Noto Sans JP", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, 8, y + h/2 + 4);
+    ctx.fillStyle = '#f5f2e8';
+    ctx.font = '12px "Noto Sans JP", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(value, labelW + 6, y + h/2 + 4);
+  }
+
+  function val(id) { return document.getElementById(id).value || '　'; }
+
+  row(36, 26, '工 事 名', val('f-koujimei'));
+  // split row
+  const r2y = 62, r2h = 26;
+  ctx.strokeStyle = 'rgba(200,168,75,0.5)';
+  ctx.strokeRect(3, r2y, W-6, r2h);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(3, r2y, 72, r2h);
+  ctx.fillStyle = '#c8a84b'; ctx.font='bold 11px "Noto Sans JP",sans-serif'; ctx.textAlign='left';
+  ctx.fillText('打設箇所', 6, r2y+r2h/2+4);
+  ctx.fillStyle='#f5f2e8'; ctx.font='12px "Noto Sans JP",sans-serif';
+  ctx.fillText(val('f-kakou'), 78, r2y+r2h/2+4);
+  ctx.strokeStyle='rgba(200,168,75,0.5)';
+  ctx.beginPath(); ctx.moveTo(W/2, r2y); ctx.lineTo(W/2, r2y+r2h); ctx.stroke();
+  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(W/2, r2y, 50, r2h);
+  ctx.fillStyle='#c8a84b'; ctx.fillText('配 合', W/2+4, r2y+r2h/2+4);
+  ctx.fillStyle='#f5f2e8'; ctx.fillText(val('f-haigoban'), W/2+56, r2y+r2h/2+4);
+
+  const r3y = 88, r3h = 26;
+  ctx.strokeStyle='rgba(200,168,75,0.5)'; ctx.strokeRect(3, r3y, W-6, r3h);
+  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(3, r3y, 72, r3h);
+  ctx.fillStyle='#c8a84b'; ctx.font='bold 11px "Noto Sans JP",sans-serif';
+  ctx.fillText('試 験 日', 6, r3y+r3h/2+4);
+  const rawDate = val('f-date');
+  const displayDate = rawDate && rawDate !== '　' ? rawDate.replace(/-/g,'/') : '　';
+  ctx.fillStyle='#f5f2e8'; ctx.font='12px "Noto Sans JP",sans-serif';
+  ctx.fillText(displayDate, 78, r3y+r3h/2+4);
+  ctx.beginPath(); ctx.moveTo(W/2, r3y); ctx.lineTo(W/2, r3y+r3h); ctx.stroke();
+  ctx.fillStyle='rgba(0,0,0,0.25)'; ctx.fillRect(W/2, r3y, 50, r3h);
+  ctx.fillStyle='#c8a84b'; ctx.fillText('回 数', W/2+4, r3y+r3h/2+4);
+  ctx.fillStyle='#f5f2e8'; ctx.fillText(val('f-kaisu'), W/2+56, r3y+r3h/2+4);
+
+  // Section header
+  const shY = 114;
+  ctx.fillStyle = 'rgba(0,0,0,0.35)';
+  ctx.fillRect(3, shY, W-6, 20);
+  ctx.fillStyle = '#c8a84b'; ctx.font='bold 11px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
+  ctx.fillText('― 試 験 結 果 ―', W/2, shY+14);
+
+  // Results grid (2 col)
+  const resY = 134, resH = 30;
+  const cols = [
+    ['スランプ', val('r-slump')+' cm', 3, W/2-3],
+    ['外気温', val('r-gaikion')+' °C', W/2, W/2-3],
+    ['空 気 量', val('r-kuuki')+' %', 3, W/2-3],
+    ['塩化物量', val('r-ensika')+' kg/m³', W/2, W/2-3],
+  ];
+  cols.forEach(([lbl, v, x, w], i) => {
+    const ry = resY + Math.floor(i/2)*resH;
+    ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.strokeRect(x, ry, w, resH);
+    ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(x, ry, w, 13);
+    ctx.fillStyle='#c8a84b'; ctx.font='bold 10px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
+    ctx.fillText(lbl, x+w/2, ry+11);
+    ctx.fillStyle='#f5f2e8'; ctx.font='bold 13px "Noto Sans JP",sans-serif';
+    ctx.fillText(v, x+w/2, ry+resH-6);
+  });
+  // Con temp (full width)
+  const ctY = resY + 2*resH;
+  ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.strokeRect(3, ctY, W-6, resH);
+  ctx.fillStyle='rgba(0,0,0,0.2)'; ctx.fillRect(3, ctY, W-6, 13);
+  ctx.fillStyle='#c8a84b'; ctx.font='bold 10px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
+  ctx.fillText('コンクリート温度', W/2, ctY+11);
+  ctx.fillStyle='#f5f2e8'; ctx.font='bold 13px "Noto Sans JP",sans-serif';
+  ctx.fillText(val('r-con-temp')+' °C', W/2, ctY+resH-6);
+
+  // Biko
+  const bikoY = ctY + resH;
+  ctx.strokeStyle='rgba(200,168,75,0.4)'; ctx.strokeRect(3, bikoY, W-6, 34);
+  ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(3, bikoY, W-6, 13);
+  ctx.fillStyle='#c8a84b'; ctx.font='bold 10px "Noto Sans JP",sans-serif'; ctx.textAlign='center';
+  ctx.fillText('備　考', W/2, bikoY+11);
+  ctx.fillStyle='rgba(255,255,255,0.75)'; ctx.font='11px "Noto Sans JP",sans-serif'; ctx.textAlign='left';
+  const bikoVal = document.getElementById('f-biko').value || '';
+  const lines = bikoVal.split('\n').slice(0,2);
+  lines.forEach((line,i) => ctx.fillText(line.substring(0,36), 8, bikoY+24+i*13));
+
+  // Timestamp
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const ts = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  ctx.fillStyle='rgba(200,168,75,0.7)'; ctx.font='9px "Share Tech Mono",monospace'; ctx.textAlign='right';
+  ctx.fillText(ts, W-8, H-5);
+}
+
+// ===== Camera =====
+const video = document.getElementById('video');
+const overlayCanvas = document.getElementById('overlay-bb');
+const mainCanvas = document.getElementById('canvas');
+const btnCapture = document.getElementById('btn-capture');
+const btnFlip = document.getElementById('btn-flip');
+const noCameraMsg = document.getElementById('no-camera');
+
+async function startCamera() {
+  if(stream) { stream.getTracks().forEach(t=>t.stop()); }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width:{ideal:1920}, height:{ideal:1080} },
+      audio: false
+    });
+    video.srcObject = stream;
+    video.style.display = 'block';
+    noCameraMsg.style.display = 'none';
+    btnCapture.disabled = false;
+    btnFlip.style.display = 'inline-flex';
+    overlayCanvas.style.display = 'block';
+    startOverlayLoop();
+  } catch(e) {
+    video.style.display = 'none';
+    noCameraMsg.style.display = 'flex';
+    overlayCanvas.style.display = 'none';
+    console.error('Camera error:', e);
+  }
+}
+
+document.getElementById('btn-start-camera').addEventListener('click', startCamera);
+btnFlip.addEventListener('click', () => {
+  facingMode = facingMode === 'environment' ? 'user' : 'environment';
+  startCamera();
+});
+
+// Overlay loop — draw blackboard over video preview
+function startOverlayLoop() {
+  if(animFrame) cancelAnimationFrame(animFrame);
+  function loop() {
+    const vc = document.getElementById('video-container');
+    const vcW = vc.offsetWidth;
+    const vcH = vc.offsetHeight;
+    const bbW = Math.round(vcW * overlayRatio);
+    const bbH = Math.round(bbW * (320/480));
+    overlayCanvas.style.width = bbW + 'px';
+    overlayCanvas.style.height = bbH + 'px';
+    drawBlackboard(overlayCanvas);
+    animFrame = requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+// Overlay size slider
+document.getElementById('overlay-size').addEventListener('input', function() {
+  overlayRatio = parseInt(this.value) / 100;
+  document.getElementById('overlay-size-label').textContent = this.value + '%';
+});
+
+// ===== Capture =====
+btnCapture.addEventListener('click', () => {
+  if(!stream) return;
+  const vw = video.videoWidth || 1280;
+  const vh = video.videoHeight || 720;
+  mainCanvas.width = vw;
+  mainCanvas.height = vh;
+  const ctx = mainCanvas.getContext('2d');
+
+  // Draw video frame
+  ctx.drawImage(video, 0, 0, vw, vh);
+
+  // Draw blackboard overlay at top-left
+  const bbCanvas = document.createElement('canvas');
+  drawBlackboard(bbCanvas);
+  const bbW = Math.round(vw * overlayRatio);
+  const bbH = Math.round(bbW * (320/480));
+  const margin = Math.round(vw * 0.02);
+  ctx.drawImage(bbCanvas, margin, margin, bbW, bbH);
+
+  const dataURL = mainCanvas.toDataURL('image/jpeg', 0.92);
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const filename = `concrete_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.jpg`;
+
+  photos.push({ dataURL, filename });
+  renderGallery();
+
+  // Flash effect
+  const flash = document.createElement('div');
+  flash.style.cssText = 'position:fixed;inset:0;background:white;opacity:0.8;z-index:999;pointer-events:none;transition:opacity 0.3s';
+  document.body.appendChild(flash);
+  setTimeout(()=>{ flash.style.opacity='0'; setTimeout(()=>flash.remove(), 350); }, 50);
+});
+
+// ===== Gallery =====
+function renderGallery() {
+  const g = document.getElementById('gallery');
+  document.getElementById('photo-count').textContent = photos.length;
+  g.innerHTML = '';
+  photos.forEach((p, i) => {
+    const item = document.createElement('div');
+    item.className = 'gallery-item';
+    item.innerHTML = `
+      <img src="${p.dataURL}" alt="photo ${i+1}">
+      <button class="del-btn" title="削除">✕</button>
+      <button class="dl-btn" title="保存">↓保存</button>
+    `;
+    item.querySelector('img').addEventListener('click', () => openModal(p));
+    item.querySelector('.del-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      photos.splice(i, 1);
+      renderGallery();
+    });
+    item.querySelector('.dl-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      downloadPhoto(p);
+    });
+    g.appendChild(item);
+  });
+}
+
+function downloadPhoto(p) {
+  const a = document.createElement('a');
+  a.href = p.dataURL;
+  a.download = p.filename;
+  a.click();
+}
+
+// Modal
+function openModal(p) {
+  document.getElementById('modal-img').src = p.dataURL;
+  document.getElementById('modal').classList.add('open');
+  document.getElementById('modal-dl').onclick = () => downloadPhoto(p);
+}
+document.getElementById('modal-close').addEventListener('click', () => {
+  document.getElementById('modal').classList.remove('open');
+});
+document.getElementById('modal').addEventListener('click', function(e) {
+  if(e.target === this) this.classList.remove('open');
+});
+
+// Re-render overlay when any input changes
+document.querySelectorAll('.bb-input, .bb-textarea').forEach(el => {
+  el.addEventListener('input', ()=>{});
+});
+
+// Init gallery
+renderGallery();
+</script>
+</body>
+</html>
